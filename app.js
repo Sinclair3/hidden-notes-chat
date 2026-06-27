@@ -240,6 +240,21 @@ function formatDuration(seconds) {
   return `${minutes}:${rest.toString().padStart(2, '0')}`;
 }
 
+async function getBlobDuration(blob) {
+  return await new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const audio = document.createElement('audio');
+    audio.src = url;
+    audio.addEventListener('loadedmetadata', () => {
+      const d = audio.duration || 0;
+      URL.revokeObjectURL(url);
+      resolve(d);
+    });
+    // safety: if metadata never fires, resolve after 3s with 0
+    setTimeout(() => resolve(0), 3000);
+  });
+}
+
 async function handleFileSelection(event) {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -283,6 +298,12 @@ async function addChatMessage(text) {
     };
 
     if (pendingAttachment.file) {
+      // If this is audio and we don't yet have a duration, probe it first
+      if (pendingAttachment.type.startsWith('audio/') && !pendingAttachment.duration) {
+        const seconds = await getBlobDuration(pendingAttachment.file);
+        pendingAttachment.duration = seconds ? formatDuration(seconds) : undefined;
+        attachmentData.duration = pendingAttachment.duration || undefined;
+      }
       const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
       attachmentData.url = dataUrl;
     }
@@ -339,8 +360,8 @@ async function toggleReaction(messageId) {
   if (!message || !supabase) return;
 
   const existing = Array.isArray(message.reactions) ? message.reactions : message.reaction ? [message.reaction] : [];
-  const hasHeart = existing.includes('❤️');
-  const updated = hasHeart ? existing.filter((item) => item !== '❤️') : [...existing, '❤️'];
+  const hasLiked = existing.includes('Liked') || existing.includes('❤️');
+  const updated = hasLiked ? [] : ['Liked'];
 
   const { error } = await supabase.from('messages').update({ reactions: updated }).eq('id', messageId);
   if (error) {
@@ -595,7 +616,7 @@ function renderChatMessages() {
     const reactionButton = document.createElement('button');
     reactionButton.type = 'button';
     reactionButton.className = 'reaction-toggle';
-    reactionButton.textContent = message.reaction || '❤️';
+    reactionButton.textContent = message.reaction || '⋯';
     reactionButton.addEventListener('click', () => toggleReaction(message.id));
     actions.appendChild(reactionButton);
 
