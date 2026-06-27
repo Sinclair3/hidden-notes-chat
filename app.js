@@ -1306,9 +1306,44 @@ sendMessageButton.addEventListener('click', async () => {
 composerInput.addEventListener('keydown', async (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
-    if (isRecording && recorder) {
-      try { recorder.requestData(); } catch (e) { console.warn('requestData failed', e); }
-      recorder.stop();
+    const trimmed = composerInput.value.trim();
+    // Composer commands
+    if (trimmed.startsWith('/expire ')) {
+      const parts = trimmed.split(' ');
+      const secs = parseInt(parts[1], 10);
+      if (!isNaN(secs) && secs > 0) {
+        pendingExpiry = secs;
+        alert('Next message will expire in ' + secs + ' seconds');
+        composerInput.value = '';
+        return;
+      }
+    }
+    if (trimmed.startsWith('/sendat ')) {
+      const when = trimmed.substring(8).trim();
+      const ts = Date.parse(when);
+      if (!isNaN(ts)) {
+        scheduledSendAt = ts;
+        const delay = ts - Date.now();
+        if (delay <= 0) {
+          alert('Time is in the past');
+          return;
+        }
+        setTimeout(async () => {
+          await addChatMessage(composerInput.value || '(scheduled)');
+          scheduledSendAt = null;
+        }, delay);
+        alert('Message scheduled for ' + new Date(ts).toLocaleString());
+        composerInput.value = '';
+        return;
+      }
+    }
+    if (trimmed === '/clear-schedule') {
+      scheduledSendAt = null;
+      pendingExpiry = null;
+      alert('Cleared schedule and expiry');
+      composerInput.value = '';
+      return;
+    }
       await new Promise((resolve) => (recordingStopResolver = resolve));
       await addChatMessage(composerInput.value);
       return;
