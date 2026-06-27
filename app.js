@@ -109,6 +109,7 @@ let supabase = null;
 let realtimeChannel = null;
 let pollTimer = null;
 const deviceId = getDeviceId();
+const STORAGE_BUCKET = 'attachments'; // ensure this bucket exists in your Supabase project
 
 function getDeviceId() {
   let id = localStorage.getItem(DEVICE_ID_KEY);
@@ -237,6 +238,28 @@ async function encodeBlobAsDataUrl(blob) {
   });
 }
 
+async function uploadBlobToStorage(blob, destPath, contentType) {
+  if (!supabase) throw new Error('Supabase not initialized');
+  try {
+    console.log('Uploading to storage', destPath, 'type', contentType);
+    const options = { upsert: true };
+    if (contentType) options.contentType = contentType;
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).upload(destPath, blob, options);
+    if (error) {
+      console.error('Storage upload error', error);
+      throw error;
+    }
+    // get public URL
+    const urlData = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(destPath);
+    const publicUrl = (urlData && (urlData.publicUrl || urlData.publicURL)) || null;
+    console.log('Uploaded to storage publicUrl', publicUrl);
+    return { path: destPath, publicUrl };
+  } catch (err) {
+    console.error('uploadBlobToStorage failed', err);
+    throw err;
+  }
+}
+
 function formatDuration(seconds) {
   const minutes = Math.floor(seconds / 60);
   const rest = Math.floor(seconds % 60);
@@ -322,8 +345,29 @@ async function addChatMessage(text) {
         pendingAttachment.duration = seconds ? formatDuration(seconds) : undefined;
         attachmentData.duration = pendingAttachment.duration || undefined;
       }
-      const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
-      attachmentData.url = dataUrl;
+
+      // Upload audio blobs to Supabase Storage for stable serving when possible
+      if (pendingAttachment.type.startsWith('audio/') && supabase) {
+        try {
+          const filename = `${crypto.randomUUID()}-${pendingAttachment.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
+          const path = `${ROOM_KEY}/${filename}`;
+          const { publicUrl, path: storagePath } = await uploadBlobToStorage(pendingAttachment.file, path, pendingAttachment.type);
+          if (publicUrl) {
+            attachmentData.url = publicUrl;
+            attachmentData.storage_path = storagePath;
+          } else {
+            const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
+            attachmentData.url = dataUrl;
+          }
+        } catch (err) {
+          console.warn('Audio upload failed; falling back to data URL', err);
+          const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
+          attachmentData.url = dataUrl;
+        }
+      } else {
+        const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
+        attachmentData.url = dataUrl;
+      }
     }
 
     payload.content = JSON.stringify(attachmentData);
