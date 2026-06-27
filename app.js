@@ -102,6 +102,8 @@ let pendingAttachment = null;
 let isRecording = false;
 let recorder = null;
 let audioChunks = [];
+let recordTimer = null;
+let recordStartTime = null;
 let supabase = null;
 let realtimeChannel = null;
 let pollTimer = null;
@@ -396,29 +398,79 @@ async function handleAudioRecording() {
 
     recorder.addEventListener('stop', async () => {
       const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      // Probe full duration and create data URL preview
       const url = URL.createObjectURL(blob);
       const audio = document.createElement('audio');
       audio.src = url;
-      audio.addEventListener('loadedmetadata', () => {
+      audio.addEventListener('loadedmetadata', async () => {
+        const seconds = audio.duration || 0;
+        const duration = seconds ? formatDuration(seconds) : undefined;
         pendingAttachment = {
           name: 'Voice message.webm',
           type: blob.type,
           file: blob,
           url,
-          duration: formatDuration(audio.duration),
+          duration,
         };
+        console.log('Recorded blob size:', blob.size, 'duration seconds:', seconds);
         renderAttachmentPreview();
       });
+      // safety fallback: ensure UI updated even if metadata doesn't fire
+      setTimeout(() => {
+        if (!pendingAttachment) {
+          pendingAttachment = {
+            name: 'Voice message.webm',
+            type: blob.type,
+            file: blob,
+            url,
+            duration: undefined,
+          };
+          console.warn('loadedmetadata did not fire; using fallback pendingAttachment');
+          renderAttachmentPreview();
+        }
+      }, 1200);
       isRecording = false;
-      recordButton.classList.remove('recording');
+      stopRecordingUI();
     });
 
     recorder.start();
     isRecording = true;
-    recordButton.classList.add('recording');
+    startRecordingUI();
   } catch (error) {
     console.error('Recording failed', error);
   }
+}
+
+function startRecordingUI() {
+  if (!recordButton) return;
+  recordStartTime = Date.now();
+  recordButton.classList.add('recording');
+  const el = document.getElementById('recordTimer');
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.textContent = '00:00';
+  if (recordTimer) clearInterval(recordTimer);
+  recordTimer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+    const seconds = (elapsed % 60).toString().padStart(2, '0');
+    el.textContent = `${minutes}:${seconds}`;
+  }, 250);
+}
+
+function stopRecordingUI() {
+  if (!recordButton) return;
+  recordButton.classList.remove('recording');
+  const el = document.getElementById('recordTimer');
+  if (el) {
+    el.classList.add('hidden');
+    el.textContent = '';
+  }
+  if (recordTimer) {
+    clearInterval(recordTimer);
+    recordTimer = null;
+  }
+  recordStartTime = null;
 }
 
 async function handleSend() {

@@ -417,6 +417,18 @@ button {
   color: #ffffff;
 }
 
+.record-timer {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 13px;
+  color: #2563eb;
+  background: rgba(37,99,235,0.08);
+  padding: 6px 8px;
+  border-radius: 999px;
+}
+
+.record-timer.hidden { display: none; }
+
 .chat-action-button {
   background: #2563eb;
   color: #ffffff;
