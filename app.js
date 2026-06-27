@@ -1173,11 +1173,62 @@ function setView(viewName) {
   }
 }
 
-function handleSecretOpen() {
-  setView('chat');
+async function handleSecretOpen() {
+  if (!decoyPinHash) {
+    const pin = prompt('Set a decoy PIN to protect the hidden chat (leave blank to skip):');
+    if (!pin) {
+      setView('chat');
+      return;
+    }
+    const h = await sha256Hex(pin);
+    localStorage.setItem('decoy-pin-hash', h);
+    decoyPinHash = h;
+    alert('Decoy PIN set. Use it to hide the chat later.');
+    setView('chat');
+    return;
+  }
+  const entry = prompt('Enter PIN to open hidden chat:');
+  if (!entry) {
+    // open decoy notes
+    const decoy = localStorage.getItem('decoy-notes');
+    if (decoy) {
+      try { notes = JSON.parse(decoy); } catch (e) { notes = defaultNotes.slice(); }
+    } else {
+      notes = defaultNotes.slice();
+    }
+    saveNotes();
+    renderNotes();
+    setView('notes');
+    return;
+  }
+  const h2 = await sha256Hex(entry);
+  if (h2 === decoyPinHash) {
+    setView('chat');
+  } else {
+    // wrong PIN -> decoy
+    const decoy = localStorage.getItem('decoy-notes');
+    if (decoy) {
+      try { notes = JSON.parse(decoy); } catch (e) { notes = defaultNotes.slice(); }
+    } else {
+      notes = defaultNotes.slice();
+    }
+    saveNotes();
+    renderNotes();
+    setView('notes');
+  }
 }
 
+
 searchInput.addEventListener('input', renderNotes);
+
+async function sha256Hex(str) {
+  const enc = new TextEncoder();
+  const data = enc.encode(str);
+  const hashBuf = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuf));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 
 searchForm.addEventListener('submit', (event) => {
   event.preventDefault();
