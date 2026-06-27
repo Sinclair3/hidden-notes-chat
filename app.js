@@ -737,6 +737,21 @@ async function fetchChatHistory() {
   renderChatMessages();
 }
 
+function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') Notification.requestPermission().then((p) => console.log('Notification permission', p));
+}
+
+function showDesktopNotification(title, body, icon) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const n = new Notification(title, { body, icon });
+    setTimeout(() => n.close(), 5000);
+  } catch (e) {
+    console.warn('showDesktopNotification failed', e);
+  }
+}
+
 async function subscribeToChat() {
   if (!supabase) return;
 
@@ -784,6 +799,19 @@ async function subscribeToChat() {
       async (payload) => {
         console.log('Realtime payload', payload);
         if (payload.new || payload.old) {
+          // show notification for incoming
+          try {
+            const p = payload.new || payload.old;
+            if (p && p.sender && p.sender !== deviceId) {
+              const title = 'Hidden chat';
+              let body = '';
+              if (p.type === 'text') body = p.content?.substring?.(0, 120) || 'New message';
+              else if (p.type === 'audio') body = 'Voice message';
+              else if (p.type === 'image') body = 'Image attachment';
+              else body = 'New message';
+              if (!document.hasFocus()) showDesktopNotification(title, body);
+            }
+          } catch (e) { console.warn('notify failed', e); }
           await fetchChatHistory();
         }
       }
