@@ -244,18 +244,33 @@ function formatDuration(seconds) {
 }
 
 async function getBlobDuration(blob) {
-  return await new Promise((resolve) => {
-    const url = URL.createObjectURL(blob);
-    const audio = document.createElement('audio');
-    audio.src = url;
-    audio.addEventListener('loadedmetadata', () => {
-      const d = audio.duration || 0;
-      URL.revokeObjectURL(url);
-      resolve(d);
+  // Prefer decoding via AudioContext for accurate duration
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) throw new Error('No AudioContext');
+    const ac = new AudioCtx();
+    const audioBuffer = await new Promise((resolve, reject) => {
+      ac.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
     });
-    // safety: if metadata never fires, resolve after 3s with 0
-    setTimeout(() => resolve(0), 3000);
-  });
+    const duration = audioBuffer.duration || 0;
+    try { ac.close && ac.close(); } catch (e) { /* ignore */ }
+    return duration;
+  } catch (err) {
+    // Fallback to metadata on audio element
+    return await new Promise((resolve) => {
+      const url = URL.createObjectURL(blob);
+      const audio = document.createElement('audio');
+      audio.src = url;
+      audio.addEventListener('loadedmetadata', () => {
+        const d = audio.duration || 0;
+        URL.revokeObjectURL(url);
+        resolve(d);
+      });
+      // safety: if metadata never fires, resolve after 5s with 0
+      setTimeout(() => resolve(0), 5000);
+    });
+  }
 }
 
 async function handleFileSelection(event) {
@@ -416,28 +431,29 @@ async function handleAudioRecording() {
 
     recorder.addEventListener('stop', async () => {
       const chunkType = (audioChunks[0] && audioChunks[0].type) || 'audio/webm';
+      const totalBytes = audioChunks.reduce((s, c) => s + (c.size || 0), 0);
+      console.log('recording stopped — chunks:', audioChunks.length, 'totalBytes:', totalBytes, 'chunkType:', chunkType);
       const blob = new Blob(audioChunks, { type: chunkType });
       // Probe full duration and create data URL preview
-      const url = URL.createObjectURL(blob);
-      const audio = document.createElement('audio');
-      audio.src = url;
-      audio.addEventListener('loadedmetadata', async () => {
-        const seconds = audio.duration || 0;
-        const duration = seconds ? formatDuration(seconds) : undefined;
-        pendingAttachment = {
-          name: 'Voice message.webm',
-          type: blob.type,
-          file: blob,
-          url,
-          duration,
-        };
-        console.log('Recorded blob size:', blob.size, 'duration seconds:', seconds);
-        renderAttachmentPreview();
-        if (typeof recordingStopResolver === 'function') {
-          recordingStopResolver();
-          recordingStopResolver = null;
-        }
+      const seconds = await getBlobDuration(blob).catch((e) => {
+        console.warn('getBlobDuration failed', e);
+        return 0;
       });
+      const duration = seconds ? formatDuration(seconds) : undefined;
+      const url = URL.createObjectURL(blob);
+      pendingAttachment = {
+        name: 'Voice message.webm',
+        type: blob.type,
+        file: blob,
+        url,
+        duration,
+      };
+      console.log('Recorded blob size:', blob.size, 'duration seconds:', seconds);
+      renderAttachmentPreview();
+      if (typeof recordingStopResolver === 'function') {
+        recordingStopResolver();
+        recordingStopResolver = null;
+      }
       // safety fallback: ensure UI updated even if metadata doesn't fire
       setTimeout(() => {
         if (!pendingAttachment) {
