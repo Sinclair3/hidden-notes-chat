@@ -104,6 +104,7 @@ let recorder = null;
 let audioChunks = [];
 let recordTimer = null;
 let recordStartTime = null;
+let recordingStopResolver = null;
 let supabase = null;
 let realtimeChannel = null;
 let pollTimer = null;
@@ -399,6 +400,7 @@ async function handleAudioRecording() {
     recorder.addEventListener('dataavailable', (event) => {
       if (event.data.size > 0) {
         audioChunks.push(event.data);
+        console.log('chunk received', audioChunks.length, 'bytes', event.data.size, 'type', event.data.type);
       }
     });
 
@@ -413,7 +415,8 @@ async function handleAudioRecording() {
     recorder.addEventListener('error', (e) => console.error('recorder error', e));
 
     recorder.addEventListener('stop', async () => {
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const chunkType = (audioChunks[0] && audioChunks[0].type) || 'audio/webm';
+      const blob = new Blob(audioChunks, { type: chunkType });
       // Probe full duration and create data URL preview
       const url = URL.createObjectURL(blob);
       const audio = document.createElement('audio');
@@ -430,6 +433,10 @@ async function handleAudioRecording() {
         };
         console.log('Recorded blob size:', blob.size, 'duration seconds:', seconds);
         renderAttachmentPreview();
+        if (typeof recordingStopResolver === 'function') {
+          recordingStopResolver();
+          recordingStopResolver = null;
+        }
       });
       // safety fallback: ensure UI updated even if metadata doesn't fire
       setTimeout(() => {
@@ -443,6 +450,10 @@ async function handleAudioRecording() {
           };
           console.warn('loadedmetadata did not fire; using fallback pendingAttachment');
           renderAttachmentPreview();
+          if (typeof recordingStopResolver === 'function') {
+            recordingStopResolver();
+            recordingStopResolver = null;
+          }
         }
       }, 1200);
       isRecording = false;
@@ -839,11 +850,28 @@ logoButton.addEventListener('click', () => {
 });
 
 chatBackButton.addEventListener('click', () => setView('notes'));
-sendMessageButton.addEventListener('click', () => addChatMessage(composerInput.value));
-composerInput.addEventListener('keydown', (event) => {
+sendMessageButton.addEventListener('click', async () => {
+  if (isRecording && recorder) {
+    try { recorder.requestData(); } catch (e) { console.warn('requestData failed', e); }
+    recorder.stop();
+    await new Promise((resolve) => (recordingStopResolver = resolve));
+    await addChatMessage(composerInput.value);
+    return;
+  }
+  await addChatMessage(composerInput.value);
+});
+
+composerInput.addEventListener('keydown', async (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
-    addChatMessage(composerInput.value);
+    if (isRecording && recorder) {
+      try { recorder.requestData(); } catch (e) { console.warn('requestData failed', e); }
+      recorder.stop();
+      await new Promise((resolve) => (recordingStopResolver = resolve));
+      await addChatMessage(composerInput.value);
+      return;
+    }
+    await addChatMessage(composerInput.value);
   }
 });
 
