@@ -479,14 +479,37 @@ async function addChatMessage(text) {
     reply_to: payload.reply_to,
   };
 
+  // handle self-destruct expiry
+  if (pendingExpiry) {
+    const expiresAt = new Date(Date.now() + pendingExpiry * 1000).toISOString();
+    insertPayload.expires_at = expiresAt;
+  }
+
   console.log('Inserting chat message', insertPayload);
-  const { data: insertData, error } = await supabase.from('messages').insert([insertPayload]);
+  const { data: insertData, error } = await supabase.from('messages').insert([insertPayload]).select();
 
   if (error) {
     console.error('Supabase insert error', error);
   } else {
     console.log('Supabase insert succeeded', insertData);
+    // schedule deletion if expires_at
+    try {
+      const inserted = Array.isArray(insertData) ? insertData[0] : insertData;
+      if (inserted && inserted.expires_at) {
+        const until = new Date(inserted.expires_at).getTime() - Date.now();
+        if (until > 0) {
+          setTimeout(async () => {
+            try {
+              await supabase.from('messages').delete().eq('id', inserted.id);
+              console.log('Auto-deleted expired message', inserted.id);
+              await fetchChatHistory();
+            } catch (e) { console.warn('auto-delete failed', e); }
+          }, until);
+        }
+      }
+    } catch (e) { console.warn('post-insert expiry handling failed', e); }
   }
+  pendingExpiry = null;
 }
 
 async function toggleReaction(messageId) {
