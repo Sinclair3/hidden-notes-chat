@@ -128,7 +128,20 @@ async function initializeSupabase() {
   console.log('Initializing Supabase', { SUPABASE_URL, ROOM_KEY });
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   await fetchChatHistory();
-  subscribeToChat();
+  await subscribeToChat();
+}
+
+async function ensureNoOldServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (const registration of registrations) {
+      await registration.unregister();
+      console.log('Unregistered old service worker', registration);
+    }
+  } catch (error) {
+    console.warn('Service worker cleanup failed', error);
+  }
 }
 
 function normalizeMessageRow(row) {
@@ -440,7 +453,7 @@ async function subscribeToChat() {
     .channel('room-messages')
     .on(
       'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'messages', filter: `room=eq.${ROOM_KEY}` },
+      { event: '*', schema: 'public', table: 'messages', filter: `room=eq.${ROOM_KEY}` },
       async (payload) => {
         console.log('Realtime payload', payload);
         if (payload.new || payload.old) {
@@ -553,18 +566,18 @@ function renderChatMessages() {
 
     if (message.type === 'text' || message.type === 'message') {
       bubble.innerHTML = `<span>${escapeText(message.text)}</span>`;
-    } else if (message.type === 'image' && message.content?.url) {
+    } else if (message.type === 'image' && message.content?.url && !message.content.url.startsWith('blob:')) {
       bubble.innerHTML = `<img class="chat-image" src="${escapeText(message.content.url)}" alt="${escapeText(message.content.name || 'Image')}" />`;
       if (message.content.name) {
         bubble.insertAdjacentHTML('beforeend', `<div class="chat-attachment-label">${escapeText(message.content.name)}</div>`);
       }
-    } else if (message.type === 'audio' && message.content?.url) {
+    } else if (message.type === 'audio' && message.content?.url && !message.content.url.startsWith('blob:')) {
       bubble.innerHTML = `<audio controls src="${escapeText(message.content.url)}"></audio>`;
       if (message.content.duration) {
         bubble.insertAdjacentHTML('beforeend', `<div class="chat-attachment-label">${escapeText(message.content.duration)}</div>`);
       }
-    } else if (message.type === 'file' && message.content?.url) {
-      bubble.innerHTML = `<div class="chat-file"><span>${escapeText(message.content.name || 'Attachment')}</span></div>`;
+    } else if (message.type === 'file') {
+      bubble.innerHTML = `<div class="chat-file"><span>${escapeText(message.content?.name || message.text || 'Attachment')}</span></div>`;
     } else {
       bubble.innerHTML = `<span>${escapeText(message.text || 'Unsupported message')}</span>`;
     }
@@ -760,4 +773,4 @@ window.addEventListener('devicemotion', (event) => {
 
 loadNotes();
 renderNotes();
-initializeSupabase();
+ensureNoOldServiceWorker().then(() => initializeSupabase());
