@@ -692,8 +692,35 @@ function renderChatMessages() {
       if (message.content.name) {
         bubble.insertAdjacentHTML('beforeend', `<div class="chat-attachment-label">${escapeText(message.content.name)}</div>`);
       }
-    } else if (message.type === 'audio' && message.content?.url && !message.content.url.startsWith('blob:')) {
-      bubble.innerHTML = `<audio controls src="${escapeText(message.content.url)}"></audio>`;
+    } else if (message.type === 'audio' && message.content?.url) {
+      // Render audio. If the URL is a data: URI, convert to a Blob URL for more reliable playback across devices.
+      const audioEl = document.createElement('audio');
+      audioEl.controls = true;
+      const contentUrl = message.content.url;
+      const contentType = message.content.type || '';
+      if (contentUrl.startsWith('data:')) {
+        try {
+          const blob = dataUrlToBlob(contentUrl);
+          const blobUrl = URL.createObjectURL(blob);
+          audioEl.src = blobUrl;
+          audioEl.addEventListener('loadedmetadata', () => {
+            console.log('receiver loadedmetadata', message.id, 'duration', audioEl.duration, 'blobBytes', blob.size, 'type', blob.type);
+          });
+          audioEl.addEventListener('error', (e) => console.error('audio playback error (receiver)', message.id, e));
+          // Revoke blob URL when element is removed later (not handled here) — small memory tradeoff
+        } catch (e) {
+          console.warn('dataUrlToBlob failed, falling back to data URI', e);
+          audioEl.src = contentUrl;
+        }
+      } else {
+        // normal http(s) or already blob: URL
+        audioEl.src = contentUrl;
+        audioEl.addEventListener('loadedmetadata', () => {
+          console.log('receiver loadedmetadata', message.id, 'duration', audioEl.duration);
+        });
+        audioEl.addEventListener('error', (e) => console.error('audio playback error (receiver)', message.id, e));
+      }
+      bubble.appendChild(audioEl);
       if (message.content.duration) {
         bubble.insertAdjacentHTML('beforeend', `<div class="chat-attachment-label">${escapeText(message.content.duration)}</div>`);
       }
@@ -733,6 +760,27 @@ function renderChatMessages() {
     chatMessages.appendChild(wrapper);
   });
   chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function dataUrlToBlob(dataUrl) {
+  const parts = dataUrl.split(',');
+  const meta = parts[0] || '';
+  const base64 = parts[1] || '';
+  const isBase64 = meta.indexOf(';base64') !== -1;
+  const mimeMatch = meta.match(/data:([^;]+)/);
+  const mime = (mimeMatch && mimeMatch[1]) || 'application/octet-stream';
+  if (!isBase64) {
+    // percent-encoded
+    const bytes = decodeURIComponent(base64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  }
+  const binary = atob(base64);
+  const len = binary.length;
+  const buffer = new Uint8Array(len);
+  for (let i = 0; i < len; i++) buffer[i] = binary.charCodeAt(i);
+  return new Blob([buffer], { type: mime });
 }
 
 function escapeText(value) {
