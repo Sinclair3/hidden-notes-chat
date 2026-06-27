@@ -82,6 +82,7 @@ const sendMessageButton = document.getElementById('sendMessageButton');
 const chatBackButton = document.getElementById('chatBackButton');
 const chatStatusEl = document.querySelector('.chat-status');
 const encryptionToggle = document.getElementById('encryptionToggle');
+const themeToggle = document.getElementById('themeToggle');
 const replyPreview = document.getElementById('replyPreview');
 const replyTargetName = document.getElementById('replyTargetName');
 const replySnippet = document.getElementById('replySnippet');
@@ -122,6 +123,13 @@ let scheduledSendAt = null; // timestamp ms
 const themes = ['messenger','dark','compact'];
 let currentTheme = localStorage.getItem('theme') || 'messenger';
 document.body.dataset.theme = currentTheme;
+
+if (themeToggle) themeToggle.addEventListener('click', () => {
+  const next = themes[(themes.indexOf(currentTheme) + 1) % themes.length];
+  currentTheme = next;
+  document.body.dataset.theme = currentTheme;
+  localStorage.setItem('theme', currentTheme);
+});
 const deviceId = getDeviceId();
 const STORAGE_BUCKET = 'attachments'; // ensure this bucket exists in your Supabase project
 
