@@ -103,6 +103,8 @@ let isRecording = false;
 let recorder = null;
 let audioChunks = [];
 let supabase = null;
+let realtimeChannel = null;
+let pollTimer = null;
 const deviceId = getDeviceId();
 
 function getDeviceId() {
@@ -251,26 +253,31 @@ async function addChatMessage(text) {
     reply_to: replyToMessageId,
   };
 
+  let attachmentData = null;
+
   if (pendingAttachment) {
     payload.type = pendingAttachment.type.startsWith('image/')
       ? 'image'
       : pendingAttachment.type.startsWith('audio/')
       ? 'audio'
       : 'file';
-    payload.content = JSON.stringify({
+
+    attachmentData = {
       name: pendingAttachment.name,
       url: pendingAttachment.url,
       type: pendingAttachment.type,
       duration: pendingAttachment.duration || undefined,
-    });
+    };
+
+    if (pendingAttachment.file) {
+      const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
+      attachmentData.url = dataUrl;
+    }
+
+    payload.content = JSON.stringify(attachmentData);
 
     if (!trimmed) {
-      payload.content = JSON.stringify({
-        name: pendingAttachment.name,
-        url: pendingAttachment.url,
-        type: pendingAttachment.type,
-        duration: pendingAttachment.duration || undefined,
-      });
+      payload.content = JSON.stringify(attachmentData);
     }
   }
 
@@ -279,7 +286,7 @@ async function addChatMessage(text) {
     type: payload.type === 'text' ? 'message' : payload.type,
     side: 'outgoing',
     text: payload.type === 'text' ? trimmed : '',
-    content: payload.type === 'text' ? trimmed : JSON.parse(payload.content),
+    content: payload.type === 'text' ? trimmed : attachmentData || JSON.parse(payload.content),
     reaction: undefined,
     replyTo: payload.reply_to,
   };
@@ -295,27 +302,6 @@ async function addChatMessage(text) {
   clearReplyPreview();
 
   if (!supabase) return;
-
-  if (pendingAttachment && pendingAttachment.file) {
-    if (payload.type !== 'text') {
-      if (pendingAttachment.type.startsWith('audio/')) {
-        const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
-        payload.content = JSON.stringify({
-          name: pendingAttachment.name,
-          url: dataUrl,
-          type: pendingAttachment.type,
-          duration: pendingAttachment.duration || undefined,
-        });
-      } else if (pendingAttachment.type.startsWith('image/') || payload.type === 'file') {
-        const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
-        payload.content = JSON.stringify({
-          name: pendingAttachment.name,
-          url: dataUrl,
-          type: pendingAttachment.type,
-        });
-      }
-    }
-  }
 
   const insertPayload = {
     room: payload.room,
@@ -405,6 +391,21 @@ async function handleSend() {
   await addChatMessage(composerInput.value);
 }
 
+function startChatPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(() => {
+    if (view === 'chat') {
+      fetchChatHistory();
+    }
+  }, 2500);
+}
+
+function stopChatPolling() {
+  if (!pollTimer) return;
+  clearInterval(pollTimer);
+  pollTimer = null;
+}
+
 async function fetchChatHistory() {
   if (!supabase) return;
   const { data, error } = await supabase
@@ -423,26 +424,41 @@ async function fetchChatHistory() {
   renderChatMessages();
 }
 
-function subscribeToChat() {
+async function subscribeToChat() {
   if (!supabase) return;
-  const channel = supabase
+
+  if (realtimeChannel) {
+    try {
+      await realtimeChannel.unsubscribe();
+    } catch (error) {
+      console.warn('Realtime unsubscribe failed', error);
+    }
+    realtimeChannel = null;
+  }
+
+  realtimeChannel = supabase
     .channel('room-messages')
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'messages', filter: `room=eq.${ROOM_KEY}` },
-      (payload) => {
+      async (payload) => {
         console.log('Realtime payload', payload);
-        const message = normalizeMessageRow(payload.new);
-        if (!messages.some((item) => item.id === message.id)) {
-          messages.push(message);
-          renderChatMessages();
+        if (payload.new || payload.old) {
+          await fetchChatHistory();
         }
       }
     );
 
-  console.log('Subscribing to realtime channel', channel);
-  channel.subscribe();
+  console.log('Subscribing to realtime channel', realtimeChannel);
+  const { error } = await realtimeChannel.subscribe();
+  if (error) {
+    console.error('Realtime subscribe error', error);
+    realtimeChannel = null;
+    return;
+  }
+  console.log('Realtime subscribed', realtimeChannel.state);
 }
+
 
 function loadNotes() {
   try {
@@ -637,8 +653,14 @@ function setView(viewName) {
   if (view === 'notes') {
     searchInput.value = '';
     renderNotes();
+    stopChatPolling();
   } else {
     renderChatMessages();
+    if (supabase && !realtimeChannel) {
+      subscribeToChat();
+    }
+    fetchChatHistory();
+    startChatPolling();
   }
 }
 
@@ -734,11 +756,7 @@ window.addEventListener('devicemotion', (event) => {
   }
 });
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
-}
+// Service worker registration removed to prevent stale cached app shell on GitHub Pages.
 
 loadNotes();
 renderNotes();
