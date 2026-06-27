@@ -703,9 +703,21 @@ function renderChatMessages() {
           const blob = dataUrlToBlob(contentUrl);
           const blobUrl = URL.createObjectURL(blob);
           audioEl.src = blobUrl;
+          console.log('receiver created blobUrl', message.id, 'blobBytes', blob.size, 'type', blob.type);
           audioEl.addEventListener('loadedmetadata', () => {
             console.log('receiver loadedmetadata', message.id, 'duration', audioEl.duration, 'blobBytes', blob.size, 'type', blob.type);
           });
+          const support = audioEl.canPlayType(contentType || blob.type || 'audio/webm');
+          console.log('receiver canPlayType', message.id, contentType || blob.type, support);
+          if (!support) {
+            console.warn('receiver cannot play this MIME type, adding download fallback', message.id);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = message.content?.name || 'voice-message.webm';
+            link.textContent = 'Download audio (play locally)';
+            link.className = 'download-fallback';
+            bubble.appendChild(link);
+          }
           audioEl.addEventListener('error', (e) => console.error('audio playback error (receiver)', message.id, e));
           // Revoke blob URL when element is removed later (not handled here) — small memory tradeoff
         } catch (e) {
@@ -718,6 +730,17 @@ function renderChatMessages() {
         audioEl.addEventListener('loadedmetadata', () => {
           console.log('receiver loadedmetadata', message.id, 'duration', audioEl.duration);
         });
+        const support = audioEl.canPlayType(contentType || 'audio/webm');
+        console.log('receiver canPlayType', message.id, contentType || 'audio/webm', support);
+        if (!support) {
+          console.warn('receiver cannot play this MIME type for URL', message.id);
+          const link = document.createElement('a');
+          link.href = contentUrl;
+          link.download = message.content?.name || 'voice-message.webm';
+          link.textContent = 'Download audio (play locally)';
+          link.className = 'download-fallback';
+          bubble.appendChild(link);
+        }
         audioEl.addEventListener('error', (e) => console.error('audio playback error (receiver)', message.id, e));
       }
       bubble.appendChild(audioEl);
