@@ -119,7 +119,11 @@ function isSupabaseConfigured() {
 }
 
 async function initializeSupabase() {
-  if (!isSupabaseConfigured()) return;
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase is not configured. Live chat disabled.');
+    return;
+  }
+  console.log('Initializing Supabase', { SUPABASE_URL, ROOM_KEY });
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   await fetchChatHistory();
   subscribeToChat();
@@ -313,18 +317,21 @@ async function addChatMessage(text) {
     }
   }
 
-  const { error } = await supabase.from('messages').insert([
-    {
-      room: payload.room,
-      sender: payload.sender,
-      type: payload.type,
-      content: payload.type === 'text' ? payload.content : payload.content,
-      reply_to: payload.reply_to,
-    },
-  ]);
+  const insertPayload = {
+    room: payload.room,
+    sender: payload.sender,
+    type: payload.type,
+    content: payload.content,
+    reply_to: payload.reply_to,
+  };
+
+  console.log('Inserting chat message', insertPayload);
+  const { data: insertData, error } = await supabase.from('messages').insert([insertPayload]);
 
   if (error) {
     console.error('Supabase insert error', error);
+  } else {
+    console.log('Supabase insert succeeded', insertData);
   }
 }
 
@@ -411,26 +418,30 @@ async function fetchChatHistory() {
     return;
   }
 
+  console.log('Fetched chat history', data);
   messages = [{ id: 'sep-1', type: 'separator', label: 'TODAY' }, ...data.map(normalizeMessageRow)];
   renderChatMessages();
 }
 
 function subscribeToChat() {
   if (!supabase) return;
-  supabase
+  const channel = supabase
     .channel('room-messages')
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'messages', filter: `room=eq.${ROOM_KEY}` },
       (payload) => {
+        console.log('Realtime payload', payload);
         const message = normalizeMessageRow(payload.new);
         if (!messages.some((item) => item.id === message.id)) {
           messages.push(message);
           renderChatMessages();
         }
       }
-    )
-    .subscribe();
+    );
+
+  console.log('Subscribing to realtime channel', channel);
+  channel.subscribe();
 }
 
 function loadNotes() {
