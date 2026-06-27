@@ -1076,6 +1076,25 @@ function renderChatMessages() {
     chatMessages.appendChild(wrapper);
   });
   chatMessages.scrollTop = chatMessages.scrollHeight;
+  // send read receipts for visible incoming messages
+  sendReadReceipts();
+}
+
+function sendReadReceipts() {
+  if (!realtimeChannel) return;
+  const visible = messages.filter((m) => m.side === 'incoming' && !((readers[m.id] || new Set()).has(deviceId)) );
+  if (!visible.length) return;
+  const messageIds = visible.map((m) => m.id);
+  try {
+    realtimeChannel.send({ type: 'broadcast', event: 'read', payload: { reader: deviceId, messageIds } });
+    messageIds.forEach((id) => {
+      if (!readers[id]) readers[id] = new Set();
+      readers[id].add(deviceId);
+    });
+    renderChatMessages();
+  } catch (e) {
+    console.warn('sendReadReceipts failed', e);
+  }
 }
 
 function utf8ToBase64(str) { return btoa(unescape(encodeURIComponent(str))); }
