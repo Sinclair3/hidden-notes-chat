@@ -80,6 +80,7 @@ const chatMessages = document.getElementById('chatMessages');
 const composerInput = document.getElementById('composerInput');
 const sendMessageButton = document.getElementById('sendMessageButton');
 const chatBackButton = document.getElementById('chatBackButton');
+const chatStatusEl = document.querySelector('.chat-status');
 const replyPreview = document.getElementById('replyPreview');
 const replyTargetName = document.getElementById('replyTargetName');
 const replySnippet = document.getElementById('replySnippet');
@@ -108,6 +109,9 @@ let recordingStopResolver = null;
 let supabase = null;
 let realtimeChannel = null;
 let pollTimer = null;
+let typingTimeout = null;
+let typingSent = false;
+const readers = {}; // messageId -> Set of reader deviceIds
 const deviceId = getDeviceId();
 const STORAGE_BUCKET = 'attachments'; // ensure this bucket exists in your Supabase project
 
@@ -118,6 +122,43 @@ function getDeviceId() {
     localStorage.setItem(DEVICE_ID_KEY, id);
   }
   return id;
+}
+
+async function deleteMessage(messageId) {
+  const msg = messages.find((m) => m.id === messageId);
+  if (!msg) return;
+  if (!confirm('Delete this message?')) return;
+  try {
+    if (supabase) {
+      const { error } = await supabase.from('messages').delete().eq('id', messageId);
+      if (error) console.error('Delete message error', error);
+    }
+  } catch (e) {
+    console.error('deleteMessage failed', e);
+  }
+  messages = messages.filter((m) => m.id !== messageId);
+  renderChatMessages();
+}
+
+async function editMessage(messageId) {
+  const msg = messages.find((m) => m.id === messageId);
+  if (!msg) return;
+  if (msg.type !== 'message' && msg.type !== 'text') {
+    alert('Only text messages can be edited');
+    return;
+  }
+  const newText = prompt('Edit message', msg.text || '');
+  if (newText == null) return;
+  try {
+    if (supabase) {
+      const { error } = await supabase.from('messages').update({ content: newText }).eq('id', messageId);
+      if (error) console.error('Edit message error', error);
+    }
+  } catch (e) {
+    console.error('editMessage failed', e);
+  }
+  msg.text = newText;
+  renderChatMessages();
 }
 
 function isSupabaseConfigured() {
@@ -616,6 +657,33 @@ async function subscribeToChat() {
 
   realtimeChannel = supabase
     .channel('room-messages')
+    .on('broadcast', { event: 'typing' }, (payload) => {
+      try {
+        const p = payload.payload || payload;
+        if (!p || p.sender === deviceId) return;
+        if (p.typing) {
+          if (chatStatusEl) chatStatusEl.textContent = 'typing...';
+        } else {
+          if (chatStatusEl) chatStatusEl.textContent = 'active now';
+        }
+      } catch (e) {
+        console.warn('typing payload error', e, payload);
+      }
+    })
+    .on('broadcast', { event: 'read' }, (payload) => {
+      try {
+        const p = payload.payload || payload;
+        if (!p || p.reader === deviceId) return;
+        const ids = Array.isArray(p.messageIds) ? p.messageIds : [p.messageId].filter(Boolean);
+        ids.forEach((id) => {
+          if (!readers[id]) readers[id] = new Set();
+          readers[id].add(p.reader);
+        });
+        renderChatMessages();
+      } catch (e) {
+        console.warn('read payload error', e, payload);
+      }
+    })
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'messages', filter: `room=eq.${ROOM_KEY}` },
@@ -814,6 +882,20 @@ function renderChatMessages() {
     reactionButton.addEventListener('click', () => toggleReaction(message.id));
     actions.appendChild(reactionButton);
 
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'reaction-toggle';
+    editButton.textContent = 'Edit';
+    editButton.addEventListener('click', () => editMessage(message.id));
+    actions.appendChild(editButton);
+
+    const deleteButtonMsg = document.createElement('button');
+    deleteButtonMsg.type = 'button';
+    deleteButtonMsg.className = 'reaction-toggle';
+    deleteButtonMsg.textContent = 'Delete';
+    deleteButtonMsg.addEventListener('click', () => deleteMessage(message.id));
+    actions.appendChild(deleteButtonMsg);
+
     bubble.appendChild(actions);
 
     if (message.reaction) {
@@ -821,6 +903,18 @@ function renderChatMessages() {
       reaction.className = 'reaction';
       reaction.textContent = message.reaction;
       bubble.appendChild(reaction);
+    }
+
+    // Read receipts indicator for outgoing messages
+    if (message.side === 'outgoing') {
+      const readersSet = readers[message.id] || new Set();
+      const readersArr = Array.from(readersSet);
+      if (readersArr.length) {
+        const readEl = document.createElement('div');
+        readEl.className = 'message-read';
+        readEl.textContent = `Read by ${readersArr.length > 1 ? readersArr.length + ' users' : 'Sam'}`;
+        bubble.appendChild(readEl);
+      }
     }
 
     wrapper.appendChild(bubble);
@@ -1004,6 +1098,28 @@ composerInput.addEventListener('keydown', async (event) => {
     }
     await addChatMessage(composerInput.value);
   }
+});
+
+// Typing indicators: send typing broadcast when user types
+composerInput.addEventListener('input', () => {
+  if (!realtimeChannel) return;
+  if (!typingSent) {
+    try {
+      realtimeChannel.send({ type: 'broadcast', event: 'typing', payload: { sender: deviceId, typing: true } });
+      typingSent = true;
+    } catch (e) {
+      console.warn('typing send failed', e);
+    }
+  }
+  if (typingTimeout) clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    try {
+      realtimeChannel.send({ type: 'broadcast', event: 'typing', payload: { sender: deviceId, typing: false } });
+    } catch (e) {
+      console.warn('typing clear send failed', e);
+    }
+    typingSent = false;
+  }, 1500);
 });
 
 attachButton.addEventListener('click', () => attachmentInput.click());
