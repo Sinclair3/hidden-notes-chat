@@ -429,6 +429,12 @@ button {
 
 .record-timer.hidden { display: none; }
 
+.record-timer.recording {
+  color: #dc2626;
+  background: rgba(220,38,38,0.08);
+  font-weight: 700;
+}
+
 .chat-action-button {
   background: #2563eb;
   color: #ffffff;

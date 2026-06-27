@@ -377,6 +377,12 @@ async function toggleReaction(messageId) {
 
 async function handleAudioRecording() {
   if (isRecording) {
+    try {
+      // request final data chunk then stop to ensure complete capture
+      recorder.requestData();
+    } catch (e) {
+      console.warn('requestData() failed', e);
+    }
     recorder.stop();
     return;
   }
@@ -395,6 +401,16 @@ async function handleAudioRecording() {
         audioChunks.push(event.data);
       }
     });
+
+    recorder.addEventListener('start', () => {
+      console.log('recorder started');
+      recordStartTime = Date.now();
+    });
+
+    recorder.addEventListener('pause', () => console.log('recorder paused'));
+    recorder.addEventListener('resume', () => console.log('recorder resumed'));
+
+    recorder.addEventListener('error', (e) => console.error('recorder error', e));
 
     recorder.addEventListener('stop', async () => {
       const blob = new Blob(audioChunks, { type: 'audio/webm' });
@@ -433,7 +449,12 @@ async function handleAudioRecording() {
       stopRecordingUI();
     });
 
-    recorder.start();
+    // Start with 1s timeslice to ensure chunks are emitted frequently
+    try {
+      recorder.start(1000);
+    } catch (err) {
+      recorder.start();
+    }
     isRecording = true;
     startRecordingUI();
   } catch (error) {
