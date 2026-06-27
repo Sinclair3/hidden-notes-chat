@@ -182,6 +182,7 @@ async function initializeSupabase() {
   }
   console.log('Initializing Supabase', { SUPABASE_URL, ROOM_KEY });
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  requestNotificationPermission();
   await fetchChatHistory();
   await subscribeToChat();
 }
