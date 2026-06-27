@@ -1,0 +1,13 @@
+﻿# OS files
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# Environment
+.env
+
+# Supabase local config
+.supabase/
+.supabase

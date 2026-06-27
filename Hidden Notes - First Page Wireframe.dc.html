@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+  .ph-screen { scrollbar-width: none; }
+  .ph-screen::-webkit-scrollbar { display:none; }
+</style>
+</helmet>
+
+<!-- ===================== CANVAS TITLE ===================== -->
+<div style="position:absolute; left:60px; top:36px; width:760px;">
+  <div data-drags-parent="1" style="font-size:13px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:#9b9ba0;">Hidden Notes · Disguise App</div>
+  <div style="font-family:'Geist Mono',monospace; font-size:30px; font-weight:500; color:#1d1d1f; margin-top:6px; letter-spacing:-0.01em;">First Page Wireframe — v1</div>
+  <div style="font-size:14.5px; color:#6b6b70; margin-top:8px; line-height:1.5; max-width:680px;">A real, working Notes app on the surface. The search bar doubles as a secret unlock — typing the code reveals the hidden chat. Below: the home screen + a sample of the chat it hides.</div>
+</div>
+
+<!-- ===================== FRAME 1 — NOTES HOME ===================== -->
+<div style="position:absolute; left:80px; top:180px; width:400px;">
+  <div data-drags-parent="1" style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+    <span style="font-size:13px; font-weight:600; color:#1d1d1f; letter-spacing:0.02em;">① Notes Home — the disguise</span>
+    <span style="font-size:11px; color:#9b9ba0; background:#fff1b8; padding:2px 8px; border-radius:99px; font-weight:500;">first page</span>
+  </div>
+
+  <!-- phone bezel -->
+  <div style="width:400px; background:#0d0d0f; border-radius:46px; padding:11px; box-shadow:0 24px 60px -18px rgba(0,0,0,0.45);">
+    <div class="ph-screen" style="width:378px; height:798px; background:#ffffff; border-radius:36px; overflow:hidden; position:relative; display:flex; flex-direction:column;">
+
+      <!-- status bar -->
+      <div style="height:34px; flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:0 24px; font-size:13px; font-weight:600; color:#1d1d1f;">
+        <span style="font-variant-numeric:tabular-nums;">9:41</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="#1d1d1f"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="4.5" width="3" height="6.5" rx="1"/><rect x="8" y="2" width="3" height="9" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="#1d1d1f" stroke-width="1.3"><path d="M2 4.5a8 8 0 0 1 12 0M4.5 7a4.5 4.5 0 0 1 7 0" stroke-linecap="round"/><circle cx="8" cy="9.5" r="1" fill="#1d1d1f" stroke="none"/></svg>
+          <div style="width:23px; height:11px; border:1px solid rgba(0,0,0,0.4); border-radius:3px; padding:1.5px; position:relative;"><div style="width:72%; height:100%; background:#1d1d1f; border-radius:1px;"></div><div style="position:absolute; right:-3px; top:3px; width:2px; height:5px; background:rgba(0,0,0,0.4); border-radius:0 1px 1px 0;"></div></div>
+        </div>
+      </div>
+
+      <!-- app header -->
+      <div style="flex:0 0 auto; padding:10px 20px 4px; display:flex; align-items:center; gap:11px;">
+        <div style="width:26px; height:26px; border-radius:50%; border:1.6px solid #1d1d1f; display:flex; align-items:center; justify-content:center;"><div style="width:9px; height:9px; border-radius:50%; background:#1d1d1f;"></div></div>
+        <span style="font-size:23px; font-weight:700; letter-spacing:-0.02em; color:#1d1d1f;">Notes</span>
+        <span style="flex:1;"></span>
+        <span style="width:36px; height:36px; border-radius:50%; background:#f3f2f0; display:flex; align-items:center; justify-content:center; color:#6b6b70;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+        <span style="width:36px; height:36px; border-radius:50%; background:#cfd6c7; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; color:#3d4a32;">JS</span>
+      </div>
+
+      <!-- SEARCH BAR (the secret unlock input) -->
+      <div style="flex:0 0 auto; padding:10px 20px 12px;">
+        <div style="display:flex; align-items:center; gap:11px; background:#f3f2f0; border:1.5px solid #f5c63b; border-radius:14px; padding:13px 16px; box-shadow:0 0 0 4px rgba(245,198,59,0.14);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9b9ba0" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <span style="flex:1; color:#9b9ba0; font-size:15.5px;">Search your notes</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9b9ba0" stroke-width="1.9" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </div>
+      </div>
+
+      <!-- filter chips -->
+      <div style="flex:0 0 auto; padding:0 20px 14px; display:flex; gap:8px; overflow:hidden;">
+        <span style="font-size:13px; font-weight:600; color:#1d1d1f; background:#fff1b8; padding:7px 14px; border-radius:99px;">All</span>
+        <span style="font-size:13px; color:#6b6b70; background:#f3f2f0; padding:7px 14px; border-radius:99px;">Personal</span>
+        <span style="font-size:13px; color:#6b6b70; background:#f3f2f0; padding:7px 14px; border-radius:99px;">Work</span>
+        <span style="font-size:13px; color:#6b6b70; background:#f3f2f0; padding:7px 14px; border-radius:99px;">Lists</span>
+      </div>
+
+      <!-- NOTES GRID (Keep-style masonry, 2 col) -->
+      <div class="ph-screen" style="flex:1; overflow-y:auto; padding:0 16px 90px;">
+        <div style="display:flex; gap:11px; align-items:flex-start;">
+          <!-- column A -->
+          <div style="flex:1; display:flex; flex-direction:column; gap:11px;">
+            <div style="background:#fff8e1; border:1px solid #f3e6b8; border-radius:16px; padding:14px;">
+              <div style="font-size:14.5px; font-weight:600; color:#1d1d1f; margin-bottom:5px;">Trip ideas — Portugal</div>
+              <div style="font-size:13px; color:#6b6b70; line-height:1.5;">Lisbon → Sintra → Porto. Pastéis, tram 28, the river in the evening…</div>
+              <div style="margin-top:10px;"><span style="font-size:11px; color:#a07c1e; background:#f5e6b0; padding:3px 8px; border-radius:6px;">travel</span></div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #eceae6; border-radius:16px; padding:14px;">
+              <div style="font-size:14.5px; font-weight:600; color:#1d1d1f; margin-bottom:7px;">Grocery run</div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#9b9ba0; text-decoration:line-through;"><span style="width:15px; height:15px; border-radius:5px; background:#f5c63b; display:flex; align-items:center; justify-content:center;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Tomatoes</div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#1d1d1f;"><span style="width:15px; height:15px; border-radius:5px; border:1.6px solid #c9c9cf;"></span>Semolina</div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#1d1d1f;"><span style="width:15px; height:15px; border-radius:5px; border:1.6px solid #c9c9cf;"></span>Harissa, ricotta</div>
+              </div>
+            </div>
+            <div style="background:#e9f3f5; border:1px solid #d3e6ea; border-radius:16px; padding:14px;">
+              <div style="font-size:14.5px; font-weight:600; color:#1d1d1f; margin-bottom:5px;">Songs for the long drive</div>
+              <div style="font-size:13px; color:#6b6b70; line-height:1.5;">Big Thief, Beach House, Sufjan, slow ones for the Douro stretch.</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #eceae6; border-radius:16px; padding:14px;">
+              <div style="font-size:14.5px; font-weight:600; color:#1d1d1f; margin-bottom:5px;">Letters not sent</div>
+              <div style="font-size:13px; color:#6b6b70; line-height:1.5;">Drafts I never closed the loop on…</div>
+            </div>
+          </div>
+          <!-- column B -->
+          <div style="flex:1; display:flex; flex-direction:column; gap:11px;">
+            <div style="background:#ffffff; border:1px solid #eceae6; border-radius:16px; padding:14px;">
+              <div style="font-size:14.5px; font-weight:600; color:#1d1d1f; margin-bottom:5px;">Focaccia, take three</div>
+              <div style="font-size:13px; color:#6b6b70; line-height:1.5;">Higher hydration this time. Olive oil, the dimples done properly.</div>
+              <div style="margin-top:10px;"><span style="font-size:11px; color:#6b6b70; background:#f3f2f0; padding:3px 8px; border-radius:6px;">recipe</span></div>
+            </div>
+            <div style="background:#f1ece6; border:1px solid #e3dbd1; border-radius:16px; padding:14px;">
+              <div style="font-size:14.5px; font-weight:600; color:#1d1d1f; margin-bottom:5px;">Project Halo — kickoff</div>
+              <div style="font-size:13px; color:#6b6b70; line-height:1.5;">3 things to prove in Q3. Calendar block, two key people, Friday demo.</div>
+              <div style="margin-top:10px;"><span style="font-size:11px; color:#6b6b70; background:#e3dbd1; padding:3px 8px; border-radius:6px;">work</span></div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #eceae6; border-radius:16px; padding:14px;">
+              <div style="font-size:14.5px; font-weight:600; color:#1d1d1f; margin-bottom:5px;">Therapy — week 12</div>
+              <div style="font-size:13px; color:#6b6b70; line-height:1.5;">The shape of avoidance. What I keep circling back to.</div>
+            </div>
+            <div style="background:#fdeceb; border:1px solid #f3d6d3; border-radius:16px; padding:14px;">
+              <div style="font-size:14.5px; font-weight:600; color:#1d1d1f; margin-bottom:5px;">Steppenwolf — notes</div>
+              <div style="font-size:13px; color:#6b6b70; line-height:1.5;">The wolf inside, the bourgeois outside.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAB -->
+      <div style="position:absolute; right:22px; bottom:84px; width:58px; height:58px; border-radius:20px; background:#f5c63b; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 24px -6px rgba(245,198,59,0.7);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </div>
+
+      <!-- bottom nav -->
+      <div style="position:absolute; left:0; right:0; bottom:0; height:64px; background:rgba(255,255,255,0.92); backdrop-filter:blur(8px); border-top:1px solid #eceae6; display:flex; align-items:center; justify-content:space-around; padding-bottom:6px;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px; color:#1d1d1f;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l4 4v14H5z"/><path d="M16 3v4h4"/></svg><span style="font-size:10.5px; font-weight:600;">Notes</span></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px; color:#9b9ba0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg><span style="font-size:10.5px;">Reminders</span></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px; color:#9b9ba0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><span style="font-size:10.5px;">Archive</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ANNOTATIONS for Frame 1 ===================== -->
+<div style="position:absolute; left:520px; top:340px; width:280px;">
+  <div data-drags-parent="1" style="background:#1d1d1f; color:#fff; border-radius:14px; padding:16px 18px; box-shadow:0 12px 30px -10px rgba(0,0,0,0.4);">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><span style="width:8px; height:8px; border-radius:50%; background:#f5c63b;"></span><span style="font-size:12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#f5c63b;">Secret unlock</span></div>
+    <div style="font-size:14px; line-height:1.55; color:#ededed;">The search bar is the trigger. Type <span style="font-family:'Geist Mono',monospace; background:rgba(245,198,59,0.22); color:#ffd964; padding:1px 6px; border-radius:5px;">##open</span> and press Enter — the screen instantly swaps to the hidden chat. Otherwise it searches notes normally.</div>
+  </div>
+  <svg width="60" height="40" viewBox="0 0 60 40" style="position:absolute; left:-58px; top:14px;"><path d="M58 24 C30 18, 14 16, 2 12" fill="none" stroke="#9b9ba0" stroke-width="1.6" stroke-dasharray="4 4"/><path d="M2 12 l9 1 l-6 5z" fill="#9b9ba0"/></svg>
+</div>
+
+<div style="position:absolute; left:520px; top:560px; width:280px;">
+  <div data-drags-parent="1" style="background:#ffffff; border:1px solid #eceae6; border-radius:14px; padding:16px 18px; box-shadow:0 10px 26px -12px rgba(0,0,0,0.18);">
+    <div style="font-size:12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9b9ba0; margin-bottom:8px;">Backup unlock</div>
+    <div style="font-size:14px; line-height:1.55; color:#3a3a3e;"><b>Shake the phone</b> (or tap the ◎ logo 5×) for the same result — for when typing isn't safe. Both swap instantly, no animation, no trace.</div>
+  </div>
+</div>
+
+<div style="position:absolute; left:520px; top:740px; width:280px;">
+  <div data-drags-parent="1" style="background:#ffffff; border:1px solid #eceae6; border-radius:14px; padding:16px 18px; box-shadow:0 10px 26px -12px rgba(0,0,0,0.18);">
+    <div style="font-size:12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9b9ba0; margin-bottom:8px;">Real app, not a shell</div>
+    <div style="font-size:14px; line-height:1.55; color:#3a3a3e;">Notes genuinely create, edit, delete & search. The disguise has to work to be convincing — the <b>+</b> button and cards are all live.</div>
+  </div>
+</div>
+
+<!-- ===================== FRAME 2 — HIDDEN CHAT SAMPLE ===================== -->
+<div style="position:absolute; left:900px; top:180px; width:400px;">
+  <div data-drags-parent="1" style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+    <span style="font-size:13px; font-weight:600; color:#1d1d1f; letter-spacing:0.02em;">② Hidden Chat — what the code reveals</span>
+  </div>
+
+  <div style="width:400px; background:#0d0d0f; border-radius:46px; padding:11px; box-shadow:0 24px 60px -18px rgba(0,0,0,0.45);">
+    <div style="width:378px; height:798px; background:#ffffff; border-radius:36px; overflow:hidden; position:relative; display:flex; flex-direction:column;">
+
+      <!-- status bar -->
+      <div style="height:34px; flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:0 24px; font-size:13px; font-weight:600; color:#1d1d1f;">
+        <span style="font-variant-numeric:tabular-nums;">9:41</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="#1d1d1f"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="4.5" width="3" height="6.5" rx="1"/><rect x="8" y="2" width="3" height="9" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+          <div style="width:23px; height:11px; border:1px solid rgba(0,0,0,0.4); border-radius:3px; padding:1.5px; position:relative;"><div style="width:72%; height:100%; background:#1d1d1f; border-radius:1px;"></div></div>
+        </div>
+      </div>
+
+      <!-- chat header -->
+      <div style="flex:0 0 auto; display:flex; align-items:center; gap:11px; padding:8px 16px 12px; border-bottom:1px solid #eceae6; background:#f6f5f3;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b6b70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        <div style="width:36px; height:36px; border-radius:50%; background:#d8c5a3; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#5a4628;">SA</div>
+        <div style="flex:1;">
+          <div style="font-size:15px; font-weight:600; color:#1d1d1f;">Sam</div>
+          <div style="font-size:11.5px; color:#9b9ba0; display:flex; align-items:center; gap:5px;"><span style="width:6px; height:6px; border-radius:50%; background:#3aa56b;"></span>active now</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(245,198,59,0.18); color:#7a5a18; font-size:11px; font-weight:600; border-radius:99px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>private</div>
+      </div>
+
+      <!-- messages -->
+      <div class="ph-screen" style="flex:1; overflow-y:auto; padding:16px 16px 8px; display:flex; flex-direction:column; gap:3px;">
+        <div style="text-align:center; margin:2px 0 10px;"><span style="font-size:10.5px; color:#9b9ba0; background:#f3f2f0; padding:4px 12px; border-radius:99px; letter-spacing:0.06em;">YESTERDAY</span></div>
+
+        <div style="display:flex; justify-content:flex-start;"><div style="max-width:74%; background:#ececea; color:#1d1d1f; padding:8px 14px; font-size:14.5px; line-height:1.4; border-radius:18px; border-bottom-left-radius:5px;">did you actually go? 😅</div></div>
+        <div style="display:flex; justify-content:flex-start; margin-bottom:6px;"><div><div style="max-width:74%; background:#ececea; color:#1d1d1f; padding:8px 14px; font-size:14.5px; line-height:1.4; border-radius:18px;">to the thing, last night.</div><div style="font-size:10.5px; color:#9b9ba0; margin-top:3px; padding-left:6px;">11:42 PM</div></div></div>
+
+        <div style="display:flex; justify-content:flex-end;"><div style="max-width:74%; background:#f5c63b; color:#1d1d1f; padding:8px 14px; font-size:14.5px; line-height:1.4; border-radius:18px; border-bottom-right-radius:5px;">almost. car broke down outside trenton</div></div>
+        <!-- bubble with a reaction -->
+        <div style="display:flex; justify-content:flex-end; margin-bottom:14px;"><div style="position:relative;"><div style="max-width:74%; background:#f5c63b; color:#1d1d1f; padding:8px 14px; font-size:14.5px; line-height:1.4; border-radius:18px;">like, very on-brand of me</div><div style="position:absolute; right:8px; bottom:-12px; background:#fff; border:1px solid #eceae6; border-radius:99px; padding:2px 7px; font-size:12px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">❤️ 1</div></div></div>
+
+        <div style="display:flex; justify-content:flex-start;"><div style="background:#ececea; color:#1d1d1f; padding:8px 14px; font-size:14.5px; border-radius:18px;">oh no</div></div>
+        <div style="display:flex; justify-content:flex-start; margin-bottom:6px;"><div style="background:#ececea; color:#1d1d1f; padding:8px 14px; font-size:14.5px; border-radius:18px; border-bottom-left-radius:5px;">lol of course 💀</div></div>
+
+        <div style="text-align:center; margin:8px 0 10px;"><span style="font-size:10.5px; color:#9b9ba0; background:#f3f2f0; padding:4px 12px; border-radius:99px; letter-spacing:0.06em;">TODAY</span></div>
+
+        <!-- threaded reply -->
+        <div style="display:flex; justify-content:flex-end;"><div style="max-width:78%;"><div style="display:flex; align-items:center; gap:5px; font-size:11px; color:#9b9ba0; margin-bottom:3px; justify-content:flex-end;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>replying to Sam</div><div style="border-left:3px solid #f5c63b; background:#faf6ea; border-radius:8px; padding:6px 10px; font-size:12.5px; color:#9b9ba0; margin-bottom:4px;">“lol of course”</div><div style="background:#f5c63b; color:#1d1d1f; padding:8px 14px; font-size:14.5px; border-radius:18px; border-bottom-right-radius:5px;">trying again saturday. you in?</div></div></div>
+
+        <div style="height:8px;"></div>
+
+        <!-- image attachment -->
+        <div style="display:flex; justify-content:flex-start;"><div style="max-width:74%;"><div style="width:200px; height:140px; border-radius:16px; border-bottom-left-radius:5px; background:linear-gradient(135deg,#cbb79a,#9aa6a0); position:relative; overflow:hidden; display:flex; align-items:flex-end;"><div style="position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 8px, rgba(255,255,255,0.12) 8px 16px);"></div><div style="position:relative; padding:8px 10px; font-size:11px; color:#fff; display:flex; align-items:center; gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>the-spot.jpg</div></div></div></div>
+
+        <div style="height:8px;"></div>
+
+        <!-- voice message -->
+        <div style="display:flex; justify-content:flex-end;"><div style="max-width:74%; background:#f5c63b; border-radius:18px; border-bottom-right-radius:5px; padding:10px 14px; display:flex; align-items:center; gap:11px;"><div style="width:30px; height:30px; border-radius:50%; background:#1d1d1f; display:flex; align-items:center; justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="#f5c63b" stroke="none"><path d="M8 5v14l11-7z"/></svg></div><div style="display:flex; align-items:center; gap:2.5px; height:24px;"><span style="width:3px;height:8px;background:#1d1d1f;border-radius:2px;opacity:.5"></span><span style="width:3px;height:16px;background:#1d1d1f;border-radius:2px"></span><span style="width:3px;height:22px;background:#1d1d1f;border-radius:2px"></span><span style="width:3px;height:12px;background:#1d1d1f;border-radius:2px"></span><span style="width:3px;height:18px;background:#1d1d1f;border-radius:2px"></span><span style="width:3px;height:9px;background:#1d1d1f;border-radius:2px;opacity:.5"></span><span style="width:3px;height:14px;background:#1d1d1f;border-radius:2px;opacity:.5"></span><span style="width:3px;height:20px;background:#1d1d1f;border-radius:2px;opacity:.5"></span><span style="width:3px;height:10px;background:#1d1d1f;border-radius:2px;opacity:.5"></span><span style="width:3px;height:15px;background:#1d1d1f;border-radius:2px;opacity:.5"></span></div><span style="font-size:11.5px; color:#1d1d1f; font-variant-numeric:tabular-nums;">0:14</span></div></div>
+
+        <div style="height:8px;"></div>
+
+        <!-- typing -->
+        <div style="display:flex; justify-content:flex-start;"><div style="background:#ececea; padding:11px 14px; border-radius:18px; display:flex; gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:#9b9ba0;opacity:.4"></span><span style="width:6px;height:6px;border-radius:50%;background:#9b9ba0;opacity:.6"></span><span style="width:6px;height:6px;border-radius:50%;background:#9b9ba0;opacity:.85"></span></div></div>
+      </div>
+
+      <!-- composer -->
+      <div style="flex:0 0 auto; padding:10px 16px 12px; border-top:1px solid #eceae6; background:#fff;">
+        <div style="display:flex; align-items:center; gap:9px; background:#f3f2f0; border-radius:22px; padding:7px 8px 7px 14px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9b9ba0" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+          <span style="flex:1; color:#9b9ba0; font-size:14.5px;">Message…</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9b9ba0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
+          <div style="width:34px; height:34px; border-radius:50%; background:#f5c63b; display:flex; align-items:center; justify-content:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
+        </div>
+        <div style="text-align:center; margin-top:8px; font-size:10.5px; color:#9b9ba0; letter-spacing:0.03em;">end-to-end encrypted · shared room · no account</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ANNOTATION for Frame 2 ===================== -->
+<div style="position:absolute; left:1340px; top:300px; width:300px;">
+  <div data-drags-parent="1" style="background:#ffffff; border:1px solid #eceae6; border-radius:14px; padding:18px 20px; box-shadow:0 10px 26px -12px rgba(0,0,0,0.18);">
+    <div style="font-size:12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9b9ba0; margin-bottom:12px;">Chat features shown</div>
+    <div style="display:flex; flex-direction:column; gap:11px;">
+      <div style="display:flex; gap:10px; font-size:13.5px; color:#3a3a3e; line-height:1.45;"><span style="color:#f5c63b; font-weight:700;">·</span><span><b>Text + emoji</b> — yellow = you, grey = them</span></div>
+      <div style="display:flex; gap:10px; font-size:13.5px; color:#3a3a3e; line-height:1.45;"><span style="color:#f5c63b; font-weight:700;">·</span><span><b>Reactions</b> — long-press a bubble (❤️ tag)</span></div>
+      <div style="display:flex; gap:10px; font-size:13.5px; color:#3a3a3e; line-height:1.45;"><span style="color:#f5c63b; font-weight:700;">·</span><span><b>Threaded replies</b> — quote + reply inline</span></div>
+      <div style="display:flex; gap:10px; font-size:13.5px; color:#3a3a3e; line-height:1.45;"><span style="color:#f5c63b; font-weight:700;">·</span><span><b>Image / file sharing</b> — inline preview</span></div>
+      <div style="display:flex; gap:10px; font-size:13.5px; color:#3a3a3e; line-height:1.45;"><span style="color:#f5c63b; font-weight:700;">·</span><span><b>Voice messages</b> — waveform + duration</span></div>
+    </div>
+    <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #e3e0da; font-size:12.5px; color:#9b9ba0; line-height:1.5;">Both phones share a hidden room key — messages sync in real time, no login.</div>
+  </div>
+</div>
+
+<!-- legend / approval note -->
+<div style="position:absolute; left:80px; top:1060px; width:780px;">
+  <div data-drags-parent="1" style="background:#faf8f4; border:1px solid #eceae6; border-radius:14px; padding:16px 20px; display:flex; gap:18px; align-items:center;">
+    <span style="font-size:13px; color:#6b6b70; line-height:1.55;"><b style="color:#1d1d1f;">This is v1 of the first page only.</b> Once you approve the layout, palette and unlock pattern, I'll build the rest as a working interactive prototype (live notes + tap/type/shake unlock + the full chat).</span>
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>

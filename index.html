@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notes</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#f5c63b" />
+  </head>
+  <body>
+    <main class="screen notes-screen" id="notesScreen">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="logo-button" id="logoButton" aria-label="Open hidden chat">
+            <span class="bullseye"></span>
+          </button>
+          <div class="title-block">
+            <p class="app-label">Notes</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" aria-label="Toggle view">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div class="avatar">JS</div>
+        </div>
+      </header>
+
+      <section class="search-panel">
+        <form id="searchForm" class="search-box" autocomplete="off">
+          <label for="searchInput" class="sr-only">Search your notes</label>
+          <div class="search-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+          </div>
+          <input id="searchInput" type="text" placeholder="Search your notes" />
+          <button type="button" class="search-action" aria-label="Filter notes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 5h18M6 12h12M10 19h4" />
+            </svg>
+          </button>
+        </form>
+      </section>
+
+      <section class="chips-row" aria-label="Note filters" id="filterChips">
+        <button type="button" class="chip active" data-filter="All">All</button>
+        <button type="button" class="chip" data-filter="Personal">Personal</button>
+        <button type="button" class="chip" data-filter="Work">Work</button>
+        <button type="button" class="chip" data-filter="Lists">Lists</button>
+      </section>
+
+      <section class="notes-grid" id="notesGrid" aria-live="polite"></section>
+
+      <button class="fab" id="createNoteButton" aria-label="Create note">
+        <span class="fab-icon">+</span>
+      </button>
+
+      <nav class="bottom-nav" aria-label="Primary navigation">
+        <button class="nav-item active">
+          <span class="nav-icon">●</span>
+          <span class="nav-label">Notes</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">●</span>
+          <span class="nav-label">Reminders</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">●</span>
+          <span class="nav-label">Archive</span>
+        </button>
+      </nav>
+    </main>
+
+    <main class="screen chat-screen hidden" id="chatScreen">
+      <header class="chat-header">
+        <button class="icon-button back-button" id="chatBackButton" aria-label="Back to notes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <div class="chat-avatar">SA</div>
+        <div class="chat-info">
+          <p class="chat-name">Sam</p>
+          <p class="chat-status">active now</p>
+        </div>
+        <span class="chat-private-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="11" width="14" height="8" rx="3" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+          </svg>
+          private
+        </span>
+      </header>
+      <section class="chat-list" id="chatMessages" aria-live="polite"></section>
+      <div class="chat-reply-bar hidden" id="replyPreview">
+        <div class="reply-info">
+          <span>Replying to <strong id="replyTargetName">Sam</strong></span>
+          <p id="replySnippet"></p>
+        </div>
+        <button type="button" class="icon-button" id="cancelReplyButton" aria-label="Cancel reply">×</button>
+      </div>
+      <div class="chat-composer-panel">
+        <div class="chat-composer">
+          <button class="chat-attach" type="button" id="attachButton" aria-label="Attach file">+</button>
+          <input id="composerInput" type="text" placeholder="Message…" autocomplete="off" />
+          <button class="chat-mic" type="button" id="recordButton" aria-label="Voice message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1v11" />
+              <path d="M8 5a4 4 0 0 0 8 0" />
+              <path d="M19 11.5a7 7 0 0 1-14 0" />
+              <path d="M12 19v4" />
+            </svg>
+          </button>
+          <button class="chat-action-button" id="sendMessageButton" type="button" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 2 11 13" />
+              <path d="m22 2-7 20-4-9-9-4 20-7z" />
+            </svg>
+          </button>
+        </div>
+        <div class="attachment-preview hidden" id="attachmentPreview"></div>
+        <p class="chat-caption">end-to-end encrypted · shared room · no account</p>
+      </div>
+      <input id="attachmentInput" type="file" accept="image/*,audio/*,.pdf,.txt" hidden />
+    </main>
+
+    <div class="modal-overlay hidden" id="noteModalOverlay">
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-header">
+          <p id="modalTitle">New note</p>
+          <button class="icon-button" id="closeModalButton" aria-label="Close editor">×</button>
+        </div>
+        <form id="noteForm">
+          <label class="field-label" for="noteTitle">Title</label>
+          <input id="noteTitle" type="text" autocomplete="off" maxlength="80" />
+          <label class="field-label" for="noteBody">Note</label>
+          <textarea id="noteBody" rows="6"></textarea>
+          <label class="field-label" for="noteTag">Tag</label>
+          <select id="noteTag">
+            <option value="Personal">Personal</option>
+            <option value="Work">Work</option>
+            <option value="Lists">Lists</option>
+          </select>
+          <div class="modal-actions">
+            <button type="button" class="secondary-button" id="cancelNoteButton">Cancel</button>
+            <button type="submit" class="primary-button">Save note</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
