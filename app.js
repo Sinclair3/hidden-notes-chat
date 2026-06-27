@@ -1328,11 +1328,22 @@ async function sha256Hex(str) {
 
 searchForm.addEventListener('submit', (event) => {
   event.preventDefault();
-  if (searchInput.value.trim() === '##open') {
+  const value = searchInput.value.trim().toLowerCase();
+  if (value === '##open' || value.includes('##open')) {
     handleSecretOpen();
     return;
   }
   renderNotes();
+});
+
+searchInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    const value = searchInput.value.trim().toLowerCase();
+    if (value === '##open' || value.includes('##open')) {
+      event.preventDefault();
+      handleSecretOpen();
+    }
+  }
 });
 
 filterChips.addEventListener('click', (event) => {
