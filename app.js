@@ -81,6 +81,7 @@ const composerInput = document.getElementById('composerInput');
 const sendMessageButton = document.getElementById('sendMessageButton');
 const chatBackButton = document.getElementById('chatBackButton');
 const chatStatusEl = document.querySelector('.chat-status');
+const encryptionToggle = document.getElementById('encryptionToggle');
 const replyPreview = document.getElementById('replyPreview');
 const replyTargetName = document.getElementById('replyTargetName');
 const replySnippet = document.getElementById('replySnippet');
@@ -112,6 +113,15 @@ let pollTimer = null;
 let typingTimeout = null;
 let typingSent = false;
 const readers = {}; // messageId -> Set of reader deviceIds
+const reactionsPicker = ['👍','❤️','😂','😮','😢','👎'];
+let encryptionEnabled = false;
+let sessionPassphrase = null;
+let decoyPinHash = localStorage.getItem('decoy-pin-hash') || null;
+let pendingExpiry = null; // seconds
+let scheduledSendAt = null; // timestamp ms
+const themes = ['messenger','dark','compact'];
+let currentTheme = localStorage.getItem('theme') || 'messenger';
+document.body.dataset.theme = currentTheme;
 const deviceId = getDeviceId();
 const STORAGE_BUCKET = 'attachments'; // ensure this bucket exists in your Supabase project
 
@@ -390,12 +400,22 @@ async function addChatMessage(text) {
       // Upload audio blobs to Supabase Storage for stable serving when possible
       if (pendingAttachment.type.startsWith('audio/') && supabase) {
         try {
+          let fileToUpload = pendingAttachment.file;
+          let encryptedMeta = null;
+          if (encryptionEnabled && sessionPassphrase) {
+            // encrypt file bytes
+            const arrayBuf = await pendingAttachment.file.arrayBuffer();
+            const enc = await encryptArrayBufferWithPassword(arrayBuf, sessionPassphrase);
+            fileToUpload = new Blob([base64ToArrayBuffer(enc.data)], { type: pendingAttachment.type });
+            encryptedMeta = { iv: enc.iv, salt: enc.salt };
+          }
           const filename = `${crypto.randomUUID()}-${pendingAttachment.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
           const path = `${ROOM_KEY}/${filename}`;
-          const { publicUrl, path: storagePath } = await uploadBlobToStorage(pendingAttachment.file, path, pendingAttachment.type);
+          const { publicUrl, path: storagePath } = await uploadBlobToStorage(fileToUpload, path, pendingAttachment.type);
           if (publicUrl) {
             attachmentData.url = publicUrl;
             attachmentData.storage_path = storagePath;
+            if (encryptedMeta) attachmentData.encrypted = encryptedMeta;
           } else {
             const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
             attachmentData.url = dataUrl;
@@ -438,6 +458,17 @@ async function addChatMessage(text) {
   clearAttachment();
   clearReplyPreview();
 
+  // If encryption enabled, encrypt text payload content
+  if (encryptionEnabled && sessionPassphrase && payload.type === 'text' && payload.content) {
+    try {
+      const enc = await encryptStringWithPassword(payload.content, sessionPassphrase);
+      payload.content = JSON.stringify({ encrypted: true, data: enc.data, iv: enc.iv, salt: enc.salt });
+      payload.type = 'text';
+    } catch (e) {
+      console.warn('encrypt text failed', e);
+    }
+  }
+
   if (!supabase) return;
 
   const insertPayload = {
@@ -461,19 +492,59 @@ async function addChatMessage(text) {
 async function toggleReaction(messageId) {
   const message = messages.find((item) => item.id === messageId);
   if (!message || !supabase) return;
-
+  // legacy toggle without explicit emoji
   const existing = Array.isArray(message.reactions) ? message.reactions : message.reaction ? [message.reaction] : [];
-  const hasLiked = existing.includes('Liked') || existing.includes('❤️');
-  const updated = hasLiked ? [] : ['Liked'];
-
+  const updated = existing.length ? [] : ['Liked'];
   const { error } = await supabase.from('messages').update({ reactions: updated }).eq('id', messageId);
   if (error) {
     console.error('Supabase reaction error', error);
     return;
   }
-
   message.reaction = updated[0];
   renderChatMessages();
+}
+
+async function setReaction(messageId, emoji) {
+  const message = messages.find((m) => m.id === messageId);
+  if (!message || !supabase) return;
+  const updated = emoji ? [emoji] : [];
+  const { error } = await supabase.from('messages').update({ reactions: updated }).eq('id', messageId);
+  if (error) {
+    console.error('Supabase setReaction error', error);
+    return;
+  }
+  message.reaction = updated[0];
+  renderChatMessages();
+}
+
+function showReactionPicker(messageId, anchorEl) {
+  // remove existing picker
+  const existing = document.querySelector('.reaction-picker');
+  if (existing) existing.remove();
+  const picker = document.createElement('div');
+  picker.className = 'reaction-picker';
+  reactionsPicker.forEach((emoji) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'reaction-emoji';
+    btn.textContent = emoji;
+    btn.addEventListener('click', () => {
+      setReaction(messageId, emoji);
+      picker.remove();
+    });
+    picker.appendChild(btn);
+  });
+  const rect = anchorEl.getBoundingClientRect();
+  picker.style.position = 'absolute';
+  picker.style.left = `${rect.left}px`;
+  picker.style.top = `${rect.top - 44}px`;
+  document.body.appendChild(picker);
+  setTimeout(() => document.addEventListener('click', removePickerOnce));
+
+  function removePickerOnce(e) {
+    if (!picker.contains(e.target) && e.target !== anchorEl) picker.remove();
+    document.removeEventListener('click', removePickerOnce);
+  }
 }
 
 async function handleAudioRecording() {
@@ -838,7 +909,28 @@ function renderChatMessages() {
         }
       } else {
         // normal http(s) or already blob: URL
-        audioEl.src = contentUrl;
+        if (message.content.encrypted && sessionPassphrase) {
+          // fetch encrypted bytes, decrypt and play
+          fetch(contentUrl)
+            .then((r) => r.arrayBuffer())
+            .then(async (buf) => {
+              try {
+                const plain = await decryptArrayBufferWithPassword(buf, message.content.encrypted.iv, message.content.encrypted.salt, sessionPassphrase);
+                const blob = new Blob([plain], { type: message.content.type || 'audio/webm' });
+                const blobUrl = URL.createObjectURL(blob);
+                audioEl.src = blobUrl;
+              } catch (e) {
+                console.error('decrypt failed for attachment', e);
+                audioEl.src = contentUrl; // fallback
+              }
+            })
+            .catch((e) => {
+              console.error('fetch encrypted attachment failed', e);
+              audioEl.src = contentUrl;
+            });
+        } else {
+          audioEl.src = contentUrl;
+        }
         audioEl.addEventListener('loadedmetadata', () => {
           console.log('receiver loadedmetadata', message.id, 'duration', audioEl.duration);
         });
@@ -879,7 +971,7 @@ function renderChatMessages() {
     reactionButton.type = 'button';
     reactionButton.className = 'reaction-toggle';
     reactionButton.textContent = message.reaction || '⋯';
-    reactionButton.addEventListener('click', () => toggleReaction(message.id));
+    reactionButton.addEventListener('click', (e) => showReactionPicker(message.id, e.currentTarget));
     actions.appendChild(reactionButton);
 
     const editButton = document.createElement('button');
@@ -922,6 +1014,80 @@ function renderChatMessages() {
   });
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
+
+function utf8ToBase64(str) { return btoa(unescape(encodeURIComponent(str))); }
+function base64ToUtf8(b64) { return decodeURIComponent(escape(atob(b64))); }
+
+async function deriveKeyFromPassword(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: 250000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt','decrypt']);
+  return key;
+}
+
+async function encryptStringWithPassword(plain, password) {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKeyFromPassword(password, salt.buffer);
+  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plain));
+  return { data: arrayBufferToBase64(cipher), iv: arrayBufferToBase64(iv), salt: arrayBufferToBase64(salt) };
+}
+
+async function decryptStringWithPassword(encB64, ivB64, saltB64, password) {
+  const dec = new TextDecoder();
+  const salt = base64ToArrayBuffer(saltB64);
+  const iv = base64ToArrayBuffer(ivB64);
+  const data = base64ToArrayBuffer(encB64);
+  const key = await deriveKeyFromPassword(password, salt);
+  const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+  return dec.decode(plainBuf);
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(b64) {
+  const binary = atob(b64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function encryptArrayBufferWithPassword(arrayBuffer, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKeyFromPassword(password, salt.buffer);
+  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, arrayBuffer);
+  return { data: arrayBufferToBase64(cipher), iv: arrayBufferToBase64(iv), salt: arrayBufferToBase64(salt) };
+}
+
+async function decryptArrayBufferWithPassword(arrayBuffer, ivB64, saltB64, password) {
+  const iv = base64ToArrayBuffer(ivB64);
+  const salt = base64ToArrayBuffer(saltB64);
+  const key = await deriveKeyFromPassword(password, salt);
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(iv) }, key, arrayBuffer);
+  return plain;
+}
+
+encryptionToggle && encryptionToggle.addEventListener('click', async () => {
+  if (!encryptionEnabled) {
+    const pass = prompt('Enter passphrase for end-to-end encryption (session only)');
+    if (!pass) return;
+    sessionPassphrase = pass;
+    encryptionEnabled = true;
+    encryptionToggle.textContent = '🔓';
+  } else {
+    encryptionEnabled = false;
+    sessionPassphrase = null;
+    encryptionToggle.textContent = '🔒';
+  }
+});
 
 function dataUrlToBlob(dataUrl) {
   const parts = dataUrl.split(',');
