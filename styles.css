@@ -63,26 +63,34 @@ button {
 .chat-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   padding: 18px;
-  background: #f6f5f3;
-  border-bottom: 1px solid #eceae6;
+  background: #ffffff;
+  border-bottom: 1px solid #e5ecff;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.08);
 }
 
 .back-button {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #eef4ff;
+  color: #2563eb;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
 }
 
 .chat-avatar {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: #d8c5a3;
-  color: #5a4628;
+  background: #2563eb;
+  color: #ffffff;
   display: grid;
   place-items: center;
-  font-weight: 700;
+  font-weight: 800;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
 }
 
 .chat-info {
@@ -99,13 +107,13 @@ button {
 
 .chat-status {
   margin: 4px 0 0;
-  font-size: 11px;
-  color: #7a8574;
+  font-size: 12px;
+  color: #475569;
   display: flex;
   align-items: center;
   gap: 8px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .chat-status::before {
@@ -121,10 +129,10 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  border-radius: 99px;
-  background: rgba(245, 198, 59, 0.18);
-  color: #7a5a18;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #164eae;
   font-size: 11px;
 }
 
@@ -135,44 +143,46 @@ button {
   padding: 16px 18px 12px;
   max-height: calc(100vh - 340px);
   overflow-y: auto;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
 }
 
 .message-separator {
   align-self: center;
-  padding: 4px 12px;
-  border-radius: 99px;
-  background: #f3f2f0;
-  color: #9b9ba0;
-  font-size: 10.5px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .chat-bubble {
   position: relative;
-  max-width: 74%;
-  padding: 16px 18px;
-  border-radius: 20px;
+  max-width: 76%;
+  padding: 14px 16px;
+  border-radius: 24px;
   font-size: 15px;
-  line-height: 1.65;
+  line-height: 1.6;
   display: inline-flex;
   flex-direction: column;
   gap: 10px;
   word-break: break-word;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
 }
 
 .chat-bubble.incoming {
   align-self: flex-start;
-  background: #ececea;
-  color: #1d1d1f;
-  border-top-left-radius: 5px;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e2e8f0;
 }
 
 .chat-bubble.outgoing {
   align-self: flex-end;
-  background: #f5c63b;
-  color: #1d1d1f;
-  border-top-right-radius: 5px;
+  background: linear-gradient(135deg, #2d8cff 0%, #2563eb 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .chat-bubble .reaction {
@@ -359,35 +369,37 @@ button {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  background: #f8fbff;
 }
 
 .chat-composer {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f3f2f0;
-  border-radius: 22px;
+  background: #eef4ff;
+  border-radius: 999px;
   padding: 12px 14px;
+  border: 1px solid #dbeafe;
 }
 
 .chat-composer input {
   flex: 1;
   border: none;
   background: transparent;
-  color: #1d1d1f;
+  color: #0f172a;
   outline: none;
   font-size: 15px;
 }
 
 .chat-composer input::placeholder {
-  color: #9b9ba0;
+  color: #64748b;
 }
 
 .chat-attach,
 .chat-mic,
 .chat-action-button {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -395,18 +407,20 @@ button {
 
 .chat-attach,
 .chat-mic {
-  color: #9b9ba0;
+  color: #2563eb;
   background: #ffffff;
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.08);
 }
 
 .chat-mic.recording {
-  background: #1d1d1f;
-  color: #f5c63b;
+  background: #2563eb;
+  color: #ffffff;
 }
 
 .chat-action-button {
-  background: #f5c63b;
-  color: #1d1d1f;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.22);
 }
 
 .message-actions {

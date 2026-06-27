@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Wireframe Preview</title>
+    <link rel="stylesheet" href="chat-wireframe-preview.css" />
+  </head>
+  <body>
+    <header class="preview-header">
+      <div>
+        <h1>Chat Wireframe Preview</h1>
+        <p>Choose a chat style to use for the hidden notes app.</p>
+      </div>
+    </header>
+
+    <main class="preview-grid">
+      <section class="preview-card whatsapp">
+        <div class="preview-label">Option 1: WhatsApp-style</div>
+        <div class="chat-shell">
+          <header class="chat-header">
+            <button class="back-button">←</button>
+            <div>
+              <strong>Sam</strong>
+              <span>online</span>
+            </div>
+          </header>
+          <div class="chat-body">
+            <div class="message incoming">
+              <p>Hey, the notes view looks good. Ready for the secret chat?</p>
+              <span>10:12</span>
+            </div>
+            <div class="message outgoing">
+              <p>Yes — the hidden chat should feel smooth and private.</p>
+              <span>10:13</span>
+            </div>
+            <div class="message incoming">
+              <p>Perfect. Send a test message now.</p>
+              <span>10:15</span>
+            </div>
+          </div>
+          <div class="composer">
+            <button>+</button>
+            <input placeholder="Message" />
+            <button>→</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="preview-card messenger">
+        <div class="preview-label">Option 2: Messenger / iMessage-style</div>
+        <div class="chat-shell">
+          <header class="chat-header messenger-header">
+            <div class="avatar">SA</div>
+            <div>
+              <strong>Sam</strong>
+              <span>Typing…</span>
+            </div>
+            <button class="icon">⋯</button>
+          </header>
+          <div class="chat-body">
+            <div class="message incoming messenger-incoming">
+              <p>Try the new layout here.</p>
+            </div>
+            <div class="message outgoing messenger-outgoing">
+              <p>Looks premium and modern.</p>
+            </div>
+            <div class="message incoming messenger-incoming">
+              <p>We can show read receipts too.</p>
+            </div>
+          </div>
+          <div class="composer messenger-composer">
+            <button>☺</button>
+            <input placeholder="Aa" />
+            <button>📎</button>
+            <button>➤</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="preview-card instagram">
+        <div class="preview-label">Option 3: Instagram DM-style</div>
+        <div class="chat-shell instagram-shell">
+          <header class="chat-header instagram-header">
+            <div class="profile-ring"></div>
+            <div>
+              <strong>Sam</strong>
+              <span>Active 3m ago</span>
+            </div>
+          </header>
+          <div class="chat-body instagram-body">
+            <div class="message incoming instagram-incoming">
+              <p>Dark interface, sleek feel.</p>
+            </div>
+            <div class="message outgoing instagram-outgoing">
+              <p>Nice. Good for hidden chat.</p>
+            </div>
+            <div class="message incoming instagram-incoming">
+              <p>Keep it minimal and modern.</p>
+            </div>
+          </div>
+          <div class="composer instagram-composer">
+            <button>+</button>
+            <input placeholder="Message" />
+            <button>✈</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="preview-card telegram">
+        <div class="preview-label">Option 4: Telegram-style</div>
+        <div class="chat-shell telegram-shell">
+          <header class="chat-header telegram-header">
+            <div>
+              <strong>Sam</strong>
+              <span>online</span>
+            </div>
+          </header>
+          <div class="chat-body telegram-body">
+            <div class="message incoming telegram-incoming">
+              <p>Simple, wide bubbles for quick reading.</p>
+            </div>
+            <div class="message outgoing telegram-outgoing">
+              <p>Perfect for a utility-style hidden chat.</p>
+            </div>
+            <div class="message incoming telegram-incoming">
+              <p>Less clutter, more focus.</p>
+            </div>
+          </div>
+          <div class="composer telegram-composer">
+            <input placeholder="Message" />
+            <button>➤</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
