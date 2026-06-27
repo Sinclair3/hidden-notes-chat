@@ -397,13 +397,16 @@ async function addChatMessage(text) {
         pendingAttachment.duration = seconds ? formatDuration(seconds) : undefined;
         attachmentData.duration = pendingAttachment.duration || undefined;
       }
-
-      // Upload audio blobs to Supabase Storage for stable serving when possible
-      if (pendingAttachment.type.startsWith('audio/') && supabase) {
+      // If image, compress before encoding
+      if (pendingAttachment.type.startsWith('image/')) {
         try {
-          let fileToUpload = pendingAttachment.file;
-          let encryptedMeta = null;
-          if (encryptionEnabled && sessionPassphrase) {
+          pendingAttachment.file = await compressImageFile(pendingAttachment.file, 1280, 0.8);
+          const objUrl = URL.createObjectURL(pendingAttachment.file);
+          pendingAttachment.url = objUrl;
+        } catch (e) {
+          console.warn('image compression failed', e);
+        }
+      }
             // encrypt file bytes
             const arrayBuf = await pendingAttachment.file.arrayBuffer();
             const enc = await encryptArrayBufferWithPassword(arrayBuf, sessionPassphrase);
@@ -1161,7 +1164,21 @@ function dataUrlToBlob(dataUrl) {
   for (let i = 0; i < len; i++) buffer[i] = binary.charCodeAt(i);
   return new Blob([buffer], { type: mime });
 }
-
++
++async function compressImageFile(file, maxWidth = 1280, quality = 0.8) {
++  if (!file.type.startsWith('image/')) return file;
++  const bitmap = await createImageBitmap(file);
++  const ratio = Math.min(1, maxWidth / bitmap.width);
++  const width = Math.round(bitmap.width * ratio);
++  const height = Math.round(bitmap.height * ratio);
++  const canvas = document.createElement('canvas');
++  canvas.width = width;
++  canvas.height = height;
++  const ctx = canvas.getContext('2d');
++  ctx.drawImage(bitmap, 0, 0, width, height);
++  return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', quality));
++}
+*** End Patch
 function escapeText(value) {
   return value
     .replace(/&/g, '&amp;')
