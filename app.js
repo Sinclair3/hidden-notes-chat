@@ -528,19 +528,24 @@ async function addChatMessage(text) {
     console.error('Supabase insert error', error);
   } else {
     console.log('Supabase insert succeeded', insertData);
-    // schedule deletion if expires_at
     try {
       const inserted = Array.isArray(insertData) ? insertData[0] : insertData;
-      if (inserted && inserted.expires_at) {
-        const until = new Date(inserted.expires_at).getTime() - Date.now();
-        if (until > 0) {
-          setTimeout(async () => {
-            try {
-              await supabase.from('messages').delete().eq('id', inserted.id);
-              console.log('Auto-deleted expired message', inserted.id);
-              await fetchChatHistory();
-            } catch (e) { console.warn('auto-delete failed', e); }
-          }, until);
+      if (inserted) {
+        // Replace temp UUID with real DB id so the realtime echo is recognised and skipped
+        const tempMsg = messages.find(m => m.id === newMessage.id);
+        if (tempMsg) tempMsg.id = inserted.id;
+
+        if (inserted.expires_at) {
+          const until = new Date(inserted.expires_at).getTime() - Date.now();
+          if (until > 0) {
+            setTimeout(async () => {
+              try {
+                await supabase.from('messages').delete().eq('id', inserted.id);
+                messages = messages.filter(m => m.id !== inserted.id);
+                renderChatMessages();
+              } catch (e) { console.warn('auto-delete failed', e); }
+            }, until);
+          }
         }
       }
     } catch (e) { console.warn('post-insert expiry handling failed', e); }
@@ -844,23 +849,37 @@ async function subscribeToChat() {
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'messages', filter: `room=eq.${ROOM_KEY}` },
-      async (payload) => {
-        console.log('Realtime payload', payload);
-        if (payload.new || payload.old) {
-          // show notification for incoming
+      (payload) => {
+        const eventType = payload.eventType; // 'INSERT' | 'UPDATE' | 'DELETE'
+        if (eventType === 'INSERT' && payload.new) {
+          const row = payload.new;
+          // Show desktop notification for incoming messages
           try {
-            const p = payload.new || payload.old;
-            if (p && p.sender && p.sender !== deviceId) {
+            if (row.sender && row.sender !== deviceId) {
               const title = 'Hidden chat';
-              let body = '';
-              if (p.type === 'text') body = p.content?.substring?.(0, 120) || 'New message';
-              else if (p.type === 'audio') body = 'Voice message';
-              else if (p.type === 'image') body = 'Image attachment';
-              else body = 'New message';
+              let body = row.type === 'text' ? (row.content?.substring?.(0, 120) || 'New message')
+                       : row.type === 'audio' ? 'Voice message'
+                       : row.type === 'image' ? 'Image attachment'
+                       : 'New message';
               if (!document.hasFocus()) showDesktopNotification(title, body);
             }
           } catch (e) { console.warn('notify failed', e); }
-          await fetchChatHistory();
+          // Skip echo of our own messages (id already updated to real DB id after insert)
+          if (messages.some(m => m.id === row.id)) return;
+          messages.push(normalizeMessageRow(row));
+          renderChatMessages();
+        } else if (eventType === 'UPDATE' && payload.new) {
+          const idx = messages.findIndex(m => m.id === payload.new.id);
+          if (idx >= 0) {
+            messages[idx] = normalizeMessageRow(payload.new);
+            renderChatMessages();
+          }
+        } else if (eventType === 'DELETE') {
+          const oldId = payload.old?.id;
+          if (oldId) {
+            messages = messages.filter(m => m.id !== oldId);
+            renderChatMessages();
+          }
         }
       }
     );
