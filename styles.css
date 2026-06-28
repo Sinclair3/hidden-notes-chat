@@ -822,3 +822,7 @@ textarea {
     right: 18px;
   }
 }
+
+.pin-dialog-body {
+  padding-top: 18px;
+}

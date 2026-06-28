@@ -154,6 +154,21 @@
       </div>
     </div>
 
+    <div class="modal-overlay hidden" id="pinOverlay">
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="pinMessage">
+        <div class="modal-header">
+          <p id="pinMessage">Enter PIN</p>
+        </div>
+        <div class="pin-dialog-body">
+          <input id="pinInput" type="password" autocomplete="off" placeholder="PIN (leave blank to skip)" />
+          <div class="modal-actions">
+            <button type="button" class="secondary-button" id="pinCancelButton">Cancel</button>
+            <button type="button" class="primary-button" id="pinConfirmButton">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="app.js"></script>
   </body>
 </html>

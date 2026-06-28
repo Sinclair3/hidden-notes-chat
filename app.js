@@ -78,6 +78,7 @@ const logoButton = document.getElementById('logoButton');
 const chatScreen = document.getElementById('chatScreen');
 const chatMessages = document.getElementById('chatMessages');
 const composerInput = document.getElementById('composerInput');
+const searchActionButton = document.querySelector('#searchForm button[type="submit"]');
 const sendMessageButton = document.getElementById('sendMessageButton');
 const chatBackButton = document.getElementById('chatBackButton');
 const chatStatusEl = document.querySelector('.chat-status');
@@ -399,48 +400,55 @@ async function addChatMessage(text) {
     };
 
     if (pendingAttachment.file) {
+      let fileToUpload = pendingAttachment.file;
+      let encryptedMeta = null;
+
       // If this is audio and we don't yet have a duration, probe it first
       if (pendingAttachment.type.startsWith('audio/') && !pendingAttachment.duration) {
         const seconds = await getBlobDuration(pendingAttachment.file);
         pendingAttachment.duration = seconds ? formatDuration(seconds) : undefined;
         attachmentData.duration = pendingAttachment.duration || undefined;
       }
+
       // If image, compress before encoding
       if (pendingAttachment.type.startsWith('image/')) {
         try {
           pendingAttachment.file = await compressImageFile(pendingAttachment.file, 1280, 0.8);
           const objUrl = URL.createObjectURL(pendingAttachment.file);
           pendingAttachment.url = objUrl;
+          fileToUpload = pendingAttachment.file;
         } catch (e) {
           console.warn('image compression failed', e);
         }
       }
-            // encrypt file bytes
-            const arrayBuf = await pendingAttachment.file.arrayBuffer();
-            const enc = await encryptArrayBufferWithPassword(arrayBuf, sessionPassphrase);
-            fileToUpload = new Blob([base64ToArrayBuffer(enc.data)], { type: pendingAttachment.type });
-            encryptedMeta = { iv: enc.iv, salt: enc.salt };
-          }
-          const filename = `${crypto.randomUUID()}-${pendingAttachment.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
-          const path = `${ROOM_KEY}/${filename}`;
-          const { publicUrl, path: storagePath } = await uploadBlobToStorage(fileToUpload, path, pendingAttachment.type);
-          if (publicUrl) {
-            attachmentData.url = publicUrl;
-            attachmentData.storage_path = storagePath;
-            if (encryptedMeta) attachmentData.encrypted = encryptedMeta;
-          } else {
-            const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
-            attachmentData.url = dataUrl;
-          }
-        } catch (err) {
-          console.warn('Audio upload failed; falling back to data URL', err);
+
+      try {
+        if (sessionPassphrase && pendingAttachment.file) {
+          const arrayBuf = await pendingAttachment.file.arrayBuffer();
+          const enc = await encryptArrayBufferWithPassword(arrayBuf, sessionPassphrase);
+          fileToUpload = new Blob([base64ToArrayBuffer(enc.data)], { type: pendingAttachment.type });
+          encryptedMeta = { iv: enc.iv, salt: enc.salt };
+        }
+
+        const filename = `${crypto.randomUUID()}-${pendingAttachment.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
+        const path = `${ROOM_KEY}/${filename}`;
+        const { publicUrl, path: storagePath } = await uploadBlobToStorage(fileToUpload, path, pendingAttachment.type);
+        if (publicUrl) {
+          attachmentData.url = publicUrl;
+          attachmentData.storage_path = storagePath;
+          if (encryptedMeta) attachmentData.encrypted = encryptedMeta;
+        } else {
           const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
           attachmentData.url = dataUrl;
         }
-      } else {
+      } catch (err) {
+        console.warn('Attachment upload failed; falling back to data URL', err);
         const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
         attachmentData.url = dataUrl;
       }
+    } else {
+      const dataUrl = await encodeBlobAsDataUrl(pendingAttachment.file);
+      attachmentData.url = dataUrl;
     }
 
     payload.content = JSON.stringify(attachmentData);
@@ -1191,21 +1199,20 @@ function dataUrlToBlob(dataUrl) {
   for (let i = 0; i < len; i++) buffer[i] = binary.charCodeAt(i);
   return new Blob([buffer], { type: mime });
 }
-+
-+async function compressImageFile(file, maxWidth = 1280, quality = 0.8) {
-+  if (!file.type.startsWith('image/')) return file;
-+  const bitmap = await createImageBitmap(file);
-+  const ratio = Math.min(1, maxWidth / bitmap.width);
-+  const width = Math.round(bitmap.width * ratio);
-+  const height = Math.round(bitmap.height * ratio);
-+  const canvas = document.createElement('canvas');
-+  canvas.width = width;
-+  canvas.height = height;
-+  const ctx = canvas.getContext('2d');
-+  ctx.drawImage(bitmap, 0, 0, width, height);
-+  return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', quality));
-+}
-*** End Patch
+
+async function compressImageFile(file, maxWidth = 1280, quality = 0.8) {
+  if (!file.type.startsWith('image/')) return file;
+  const bitmap = await createImageBitmap(file);
+  const ratio = Math.min(1, maxWidth / bitmap.width);
+  const width = Math.round(bitmap.width * ratio);
+  const height = Math.round(bitmap.height * ratio);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', quality));
+}
 function escapeText(value) {
   return value
     .replace(/&/g, '&amp;')
@@ -1269,9 +1276,39 @@ function setView(viewName) {
   }
 }
 
+function showPinDialog(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('pinOverlay');
+    const input = document.getElementById('pinInput');
+    const msg = document.getElementById('pinMessage');
+    const cancelBtn = document.getElementById('pinCancelButton');
+    const confirmBtn = document.getElementById('pinConfirmButton');
+
+    msg.textContent = message;
+    input.value = '';
+    overlay.classList.remove('hidden');
+    setTimeout(() => input.focus(), 50);
+
+    function done(value) {
+      overlay.classList.add('hidden');
+      cancelBtn.removeEventListener('click', onCancel);
+      confirmBtn.removeEventListener('click', onConfirm);
+      input.removeEventListener('keydown', onKey);
+      resolve(value);
+    }
+    function onCancel() { done(null); }
+    function onConfirm() { done(input.value.trim() || null); }
+    function onKey(e) { if (e.key === 'Enter') done(input.value.trim() || null); }
+
+    cancelBtn.addEventListener('click', onCancel);
+    confirmBtn.addEventListener('click', onConfirm);
+    input.addEventListener('keydown', onKey);
+  });
+}
+
 async function handleSecretOpen() {
   if (!decoyPinHash) {
-    const pin = prompt('Set a decoy PIN to protect the hidden chat (leave blank to skip):');
+    const pin = await showPinDialog('Set a decoy PIN (leave blank to skip):');
     if (!pin) {
       setView('chat');
       return;
@@ -1279,13 +1316,12 @@ async function handleSecretOpen() {
     const h = await sha256Hex(pin);
     localStorage.setItem('decoy-pin-hash', h);
     decoyPinHash = h;
-    alert('Decoy PIN set. Use it to hide the chat later.');
     setView('chat');
     return;
   }
-  const entry = prompt('Enter PIN to open hidden chat:');
+  const entry = await showPinDialog('Enter PIN to open hidden chat:');
   if (!entry) {
-    // open decoy notes
+    // cancelled → decoy
     const decoy = localStorage.getItem('decoy-notes');
     if (decoy) {
       try { notes = JSON.parse(decoy); } catch (e) { notes = defaultNotes.slice(); }
@@ -1301,7 +1337,7 @@ async function handleSecretOpen() {
   if (h2 === decoyPinHash) {
     setView('chat');
   } else {
-    // wrong PIN -> decoy
+    // wrong PIN → decoy
     const decoy = localStorage.getItem('decoy-notes');
     if (decoy) {
       try { notes = JSON.parse(decoy); } catch (e) { notes = defaultNotes.slice(); }
@@ -1315,7 +1351,36 @@ async function handleSecretOpen() {
 }
 
 
+async function tryHandleSecretSearch(value, event) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === '##open' || normalized.includes('##open')) {
+    if (event) event.preventDefault();
+    await handleSecretOpen();
+    return true;
+  }
+  return false;
+}
+
 searchInput.addEventListener('input', renderNotes);
+
+searchForm.addEventListener('submit', async (event) => {
+  const value = searchInput.value;
+  if (await tryHandleSecretSearch(value, event)) return;
+  event.preventDefault();
+  renderNotes();
+});
+
+if (searchActionButton) {
+  searchActionButton.addEventListener('click', async (event) => {
+    if (await tryHandleSecretSearch(searchInput.value, event)) return;
+  });
+}
+
+searchInput.addEventListener('keydown', async (event) => {
+  if (event.key === 'Enter') {
+    if (await tryHandleSecretSearch(searchInput.value, event)) return;
+  }
+});
 
 async function sha256Hex(str) {
   const enc = new TextEncoder();
@@ -1325,26 +1390,6 @@ async function sha256Hex(str) {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-
-searchForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const value = searchInput.value.trim().toLowerCase();
-  if (value === '##open' || value.includes('##open')) {
-    handleSecretOpen();
-    return;
-  }
-  renderNotes();
-});
-
-searchInput.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') {
-    const value = searchInput.value.trim().toLowerCase();
-    if (value === '##open' || value.includes('##open')) {
-      event.preventDefault();
-      handleSecretOpen();
-    }
-  }
-});
 
 filterChips.addEventListener('click', (event) => {
   const chip = event.target.closest('.chip');
@@ -1411,52 +1456,55 @@ sendMessageButton.addEventListener('click', async () => {
 });
 
 composerInput.addEventListener('keydown', async (event) => {
-  if (event.key === 'Enter') {
-    event.preventDefault();
-    const trimmed = composerInput.value.trim();
-    // Composer commands
-    if (trimmed.startsWith('/expire ')) {
-      const parts = trimmed.split(' ');
-      const secs = parseInt(parts[1], 10);
-      if (!isNaN(secs) && secs > 0) {
-        pendingExpiry = secs;
-        alert('Next message will expire in ' + secs + ' seconds');
-        composerInput.value = '';
-        return;
-      }
-    }
-    if (trimmed.startsWith('/sendat ')) {
-      const when = trimmed.substring(8).trim();
-      const ts = Date.parse(when);
-      if (!isNaN(ts)) {
-        scheduledSendAt = ts;
-        const delay = ts - Date.now();
-        if (delay <= 0) {
-          alert('Time is in the past');
-          return;
-        }
-        setTimeout(async () => {
-          await addChatMessage(composerInput.value || '(scheduled)');
-          scheduledSendAt = null;
-        }, delay);
-        alert('Message scheduled for ' + new Date(ts).toLocaleString());
-        composerInput.value = '';
-        return;
-      }
-    }
-    if (trimmed === '/clear-schedule') {
-      scheduledSendAt = null;
-      pendingExpiry = null;
-      alert('Cleared schedule and expiry');
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+
+  const trimmed = composerInput.value.trim();
+
+  if (trimmed.startsWith('/expire ')) {
+    const parts = trimmed.split(' ');
+    const secs = parseInt(parts[1], 10);
+    if (!isNaN(secs) && secs > 0) {
+      pendingExpiry = secs;
+      alert('Next message will expire in ' + secs + ' seconds');
       composerInput.value = '';
       return;
     }
-      await new Promise((resolve) => (recordingStopResolver = resolve));
-      await addChatMessage(composerInput.value);
+  } else if (trimmed.startsWith('/sendat ')) {
+    const when = trimmed.substring(8).trim();
+    const ts = Date.parse(when);
+    if (!isNaN(ts)) {
+      scheduledSendAt = ts;
+      const delay = ts - Date.now();
+      if (delay <= 0) {
+        alert('Time is in the past');
+        return;
+      }
+      setTimeout(async () => {
+        await addChatMessage(composerInput.value || '(scheduled)');
+        scheduledSendAt = null;
+      }, delay);
+      alert('Message scheduled for ' + new Date(ts).toLocaleString());
+      composerInput.value = '';
       return;
     }
-    await addChatMessage(composerInput.value);
+  } else if (trimmed === '/clear-schedule') {
+    scheduledSendAt = null;
+    pendingExpiry = null;
+    alert('Cleared schedule and expiry');
+    composerInput.value = '';
+    return;
   }
+
+  if (isRecording && recorder) {
+    try { recorder.requestData(); } catch (e) { console.warn('requestData failed', e); }
+    recorder.stop();
+    await new Promise((resolve) => (recordingStopResolver = resolve));
+    await addChatMessage(composerInput.value);
+    return;
+  }
+
+  await addChatMessage(composerInput.value);
 });
 
 // Typing indicators: send typing broadcast when user types
