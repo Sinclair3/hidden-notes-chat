@@ -324,11 +324,43 @@ button {
 }
 
 .chat-message.incoming {
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .chat-message.outgoing {
   align-items: flex-end;
+}
+
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f5c63b, #f59e0b);
+  color: #1d1d1f;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.message-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.message-sender-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9b9ba0;
+  padding-left: 4px;
 }
 
 .chat-reply-preview {

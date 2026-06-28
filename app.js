@@ -3,6 +3,8 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, ROOM_KEY } from './supabase.js';
 
 const LOCAL_STORAGE_KEY = 'hidden-notes-notes';
 const DEVICE_ID_KEY = 'hidden-notes-device-id';
+const USER_NAME_KEY = 'chat-user-name';
+const KNOWN_NAMES_KEY = 'chat-known-names';
 const NOTE_COLORS = ['yellow', 'blue', 'taupe', 'rose'];
 const defaultNotes = [
   {
@@ -46,6 +48,7 @@ const sampleMessages = [
     type: 'message',
     side: 'incoming',
     text: 'Hey, I found the hidden app. This is the private chat now.',
+    senderName: 'Sam',
   },
   {
     id: 'msg-2',
@@ -53,12 +56,14 @@ const sampleMessages = [
     side: 'outgoing',
     text: 'Nice. The notes view looks ready, and the unlock works too.',
     reaction: '❤️ 1',
+    senderName: 'Me',
   },
   {
     id: 'msg-3',
     type: 'message',
     side: 'incoming',
     text: 'Perfect. We can add the real-time sync next.',
+    senderName: 'Sam',
   },
 ];
 
@@ -119,6 +124,9 @@ const reactionsPicker = ['👍','❤️','😂','😮','😢','👎'];
 let encryptionEnabled = false;
 let sessionPassphrase = null;
 let decoyPinHash = localStorage.getItem('decoy-pin-hash') || null;
+let myName = localStorage.getItem(USER_NAME_KEY) || null;
+let knownNames = {};
+try { knownNames = JSON.parse(localStorage.getItem(KNOWN_NAMES_KEY) || '{}'); } catch (e) { knownNames = {}; }
 let pendingExpiry = null; // seconds
 let scheduledSendAt = null; // timestamp ms
 const themes = ['messenger','dark','compact'];
@@ -218,16 +226,20 @@ function normalizeMessageRow(row) {
       parsedContent = row.content;
     }
   }
-
+  const senderId = row.sender;
+  const storedName = row.sender_name || null;
+  if (storedName && senderId !== deviceId) saveKnownName(senderId, storedName);
   return {
     id: row.id,
     type: row.type || 'text',
-    side: row.sender === deviceId ? 'outgoing' : 'incoming',
+    side: senderId === deviceId ? 'outgoing' : 'incoming',
     text: row.type === 'text' ? parsedContent : '',
     content: parsedContent,
     reaction: row.reactions && Array.isArray(row.reactions) ? row.reactions[0] : undefined,
     replyTo: row.reply_to,
     createdAt: row.created_at,
+    senderName: getSenderName(senderId, storedName),
+    senderId,
   };
 }
 
@@ -244,7 +256,7 @@ function getReplySnippet(message) {
 
 function showReplyPreview(message) {
   replyToMessageId = message.id;
-  replyTargetName.textContent = 'Sam';
+  replyTargetName.textContent = message.senderName || (message.side === 'outgoing' ? myName || 'You' : 'Them');
   replySnippet.textContent = getReplySnippet(message) || '';
   replyPreview.classList.remove('hidden');
 }
@@ -378,6 +390,7 @@ async function addChatMessage(text) {
   const payload = {
     room: ROOM_KEY,
     sender: deviceId,
+    sender_name: myName || 'Me',
     type: 'text',
     content: trimmed,
     reply_to: replyToMessageId,
@@ -466,6 +479,8 @@ async function addChatMessage(text) {
     content: payload.type === 'text' ? trimmed : attachmentData || JSON.parse(payload.content),
     reaction: undefined,
     replyTo: payload.reply_to,
+    senderName: myName || 'Me',
+    senderId: deviceId,
   };
 
   if (replyToMessageId) {
@@ -494,6 +509,7 @@ async function addChatMessage(text) {
   const insertPayload = {
     room: payload.room,
     sender: payload.sender,
+    sender_name: payload.sender_name,
     type: payload.type,
     content: payload.content,
     reply_to: payload.reply_to,
@@ -786,6 +802,18 @@ async function subscribeToChat() {
 
   realtimeChannel = supabase
     .channel('room-messages')
+    .on('broadcast', { event: 'name' }, (payload) => {
+      try {
+        const p = payload.payload || payload;
+        if (p && p.deviceId && p.name && p.deviceId !== deviceId) {
+          saveKnownName(p.deviceId, p.name);
+          updateChatHeader();
+          renderChatMessages();
+        }
+      } catch (e) {
+        console.warn('name broadcast error', e, payload);
+      }
+    })
     .on('broadcast', { event: 'typing' }, (payload) => {
       try {
         const p = payload.payload || payload;
@@ -928,12 +956,42 @@ function renderChatMessages() {
     const wrapper = document.createElement('div');
     wrapper.className = `chat-message ${message.side}`;
 
-    if (message.replyTo) {
-      const original = messages.find((item) => item.id === message.replyTo);
-      const replyLabel = document.createElement('div');
-      replyLabel.className = 'chat-reply-preview';
-      replyLabel.textContent = original ? `↩ replying to ${original.type === 'text' || original.type === 'message' ? original.text : original.type}` : '↩ replying';
-      wrapper.appendChild(replyLabel);
+    // For incoming: avatar + body column (name label → reply → bubble)
+    // For outgoing: reply → bubble (right-aligned, no avatar)
+    let bubbleContainer = wrapper;
+
+    if (message.side === 'incoming') {
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      avatar.textContent = getInitials(message.senderName);
+      wrapper.appendChild(avatar);
+
+      const body = document.createElement('div');
+      body.className = 'message-body';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'message-sender-name';
+      nameEl.textContent = message.senderName || 'Them';
+      body.appendChild(nameEl);
+
+      if (message.replyTo) {
+        const original = messages.find((item) => item.id === message.replyTo);
+        const replyLabel = document.createElement('div');
+        replyLabel.className = 'chat-reply-preview';
+        replyLabel.textContent = original ? `↩ replying to ${original.type === 'text' || original.type === 'message' ? original.text : original.type}` : '↩ replying';
+        body.appendChild(replyLabel);
+      }
+
+      wrapper.appendChild(body);
+      bubbleContainer = body;
+    } else {
+      if (message.replyTo) {
+        const original = messages.find((item) => item.id === message.replyTo);
+        const replyLabel = document.createElement('div');
+        replyLabel.className = 'chat-reply-preview';
+        replyLabel.textContent = original ? `↩ replying to ${original.type === 'text' || original.type === 'message' ? original.text : original.type}` : '↩ replying';
+        wrapper.appendChild(replyLabel);
+      }
     }
 
     const bubble = document.createElement('div');
@@ -1075,12 +1133,13 @@ function renderChatMessages() {
       if (readersArr.length) {
         const readEl = document.createElement('div');
         readEl.className = 'message-read';
-        readEl.textContent = `Read by ${readersArr.length > 1 ? readersArr.length + ' users' : 'Sam'}`;
+        const readerNames = readersArr.map((id) => knownNames[id] || 'Them');
+        readEl.textContent = `Read by ${readerNames.join(', ')}`;
         bubble.appendChild(readEl);
       }
     }
 
-    wrapper.appendChild(bubble);
+    bubbleContainer.appendChild(bubble);
     chatMessages.appendChild(wrapper);
   });
   chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -1258,7 +1317,49 @@ function assignColorForTag(tag) {
   return NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)];
 }
 
-function setView(viewName) {
+function getInitials(name) {
+  if (!name) return '?';
+  return name.trim().split(/\s+/).map((w) => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function getSenderName(senderId, storedName) {
+  if (senderId === deviceId) return myName || 'Me';
+  return storedName || knownNames[senderId] || 'Them';
+}
+
+function saveKnownName(senderId, name) {
+  if (!name || senderId === deviceId) return;
+  knownNames[senderId] = name;
+  try { localStorage.setItem(KNOWN_NAMES_KEY, JSON.stringify(knownNames)); } catch (e) {}
+}
+
+function updateChatHeader() {
+  const others = Object.entries(knownNames).filter(([id]) => id !== deviceId);
+  const otherName = others.length ? others[0][1] : null;
+  const chatNameEl = document.querySelector('.chat-name');
+  const chatAvatarEl = document.querySelector('.chat-avatar');
+  if (chatNameEl) chatNameEl.textContent = otherName || 'Chat';
+  if (chatAvatarEl) chatAvatarEl.textContent = getInitials(otherName || 'Chat');
+}
+
+function broadcastMyName() {
+  if (!realtimeChannel || !myName) return;
+  try {
+    realtimeChannel.send({ type: 'broadcast', event: 'name', payload: { deviceId, name: myName } });
+  } catch (e) {
+    console.warn('broadcastMyName failed', e);
+  }
+}
+
+async function setView(viewName) {
+  if (viewName === 'chat' && !myName) {
+    const name = await showPinDialog('What should we call you in this chat?', {
+      inputType: 'text',
+      placeholder: 'Your name',
+    });
+    myName = (name || '').trim() || 'Me';
+    localStorage.setItem(USER_NAME_KEY, myName);
+  }
   view = viewName;
   document.getElementById('notesScreen').classList.toggle('hidden', view !== 'notes');
   chatScreen.classList.toggle('hidden', view !== 'chat');
@@ -1268,15 +1369,17 @@ function setView(viewName) {
     stopChatPolling();
   } else {
     renderChatMessages();
+    updateChatHeader();
     if (supabase && !realtimeChannel) {
-      subscribeToChat();
+      await subscribeToChat();
     }
+    broadcastMyName();
     fetchChatHistory();
     startChatPolling();
   }
 }
 
-function showPinDialog(message) {
+function showPinDialog(message, { inputType = 'password', placeholder = 'PIN (leave blank to skip)' } = {}) {
   return new Promise((resolve) => {
     const overlay = document.getElementById('pinOverlay');
     const input = document.getElementById('pinInput');
@@ -1285,6 +1388,8 @@ function showPinDialog(message) {
     const confirmBtn = document.getElementById('pinConfirmButton');
 
     msg.textContent = message;
+    input.type = inputType;
+    input.placeholder = placeholder;
     input.value = '';
     overlay.classList.remove('hidden');
     setTimeout(() => input.focus(), 50);
