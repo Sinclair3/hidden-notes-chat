@@ -328,9 +328,9 @@ async function uploadBlobToStorage(blob, destPath, contentType) {
       console.error('Storage upload error', error);
       throw error;
     }
-    // get public URL
-    const urlData = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(destPath);
-    const publicUrl = (urlData && (urlData.publicUrl || urlData.publicURL)) || null;
+    // get public URL (SDK v2 returns { data: { publicUrl } })
+    const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(destPath);
+    const publicUrl = urlData?.publicUrl || null;
     console.log('Uploaded to storage publicUrl', publicUrl);
     return { path: destPath, publicUrl };
   } catch (err) {
