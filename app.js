@@ -747,10 +747,13 @@ async function handleSend() {
 function startChatPolling() {
   if (pollTimer) return;
   pollTimer = setInterval(() => {
-    if (view === 'chat') {
-      fetchChatHistory();
+    if (view !== 'chat') return;
+    fetchChatHistory();
+    // Reconnect realtime if it dropped
+    if (!realtimeChannel || realtimeChannel.state === 'closed' || realtimeChannel.state === 'errored') {
+      subscribeToChat();
     }
-  }, 2500);
+  }, 1000);
 }
 
 function stopChatPolling() {
