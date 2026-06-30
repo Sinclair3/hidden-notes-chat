@@ -77,8 +77,12 @@ const noteForm = document.getElementById('noteForm');
 const noteTitle = document.getElementById('noteTitle');
 const noteBody = document.getElementById('noteBody');
 const noteTag = document.getElementById('noteTag');
+const noteReminder = document.getElementById('noteReminder');
 const closeModalButton = document.getElementById('closeModalButton');
 const cancelNoteButton = document.getElementById('cancelNoteButton');
+const navNotes = document.getElementById('navNotes');
+const navReminders = document.getElementById('navReminders');
+const navArchive = document.getElementById('navArchive');
 const logoButton = document.getElementById('logoButton');
 const chatScreen = document.getElementById('chatScreen');
 const chatMessages = document.getElementById('chatMessages');
@@ -100,6 +104,7 @@ const attachmentPreview = document.getElementById('attachmentPreview');
 
 let notes = [];
 let activeFilter = 'All';
+let notesView = 'notes'; // 'notes' | 'reminders' | 'archive'
 let editingNoteId = null;
 let logoTapCount = 0;
 let logoTapTimer = null;
@@ -917,6 +922,10 @@ function saveNotes() {
 function getFilteredNotes() {
   const searchTerm = searchInput.value.trim().toLowerCase();
   return notes.filter((note) => {
+    if (notesView === 'archive') return !!note.archived;
+    if (notesView === 'reminders') return !!note.reminder && !note.archived;
+    // default 'notes' view: hide archived
+    if (note.archived) return false;
     const matchesFilter = activeFilter === 'All' || note.tag === activeFilter;
     const matchesSearch =
       note.title.toLowerCase().includes(searchTerm) || note.body.toLowerCase().includes(searchTerm);
@@ -926,9 +935,14 @@ function getFilteredNotes() {
 
 function renderNotes() {
   notesGrid.innerHTML = '';
+  const emptyMessages = {
+    notes: 'No notes yet. Tap + to create one.',
+    reminders: 'No reminders set. Open a note and set a reminder date.',
+    archive: 'Archive is empty.',
+  };
   const visibleNotes = getFilteredNotes();
   if (!visibleNotes.length) {
-    notesGrid.innerHTML = '<p class="empty-state">No notes match your search.</p>';
+    notesGrid.innerHTML = `<p class="empty-state">${emptyMessages[notesView]}</p>`;
     return;
   }
 
@@ -937,19 +951,31 @@ function renderNotes() {
     card.className = 'note-card';
     card.dataset.color = note.color || 'yellow';
     card.dataset.id = note.id;
+
+    const reminderBadge = note.reminder
+      ? `<span class="reminder-badge">🔔 ${formatReminderLabel(note.reminder)}</span>` : '';
+
+    const actionButton = note.archived
+      ? `<button class="note-unarchive" aria-label="Unarchive note">↩</button>`
+      : `<button class="note-archive" aria-label="Archive note">📦</button>`;
+
     card.innerHTML = `
       <div>
         <h3 class="note-title">${escapeText(note.title)}</h3>
         <p class="note-body">${escapeText(note.body)}</p>
+        ${reminderBadge}
       </div>
       <div class="note-footer">
         <span class="note-tag">${escapeText(note.tag)}</span>
-        <button class="note-delete" aria-label="Delete note">×</button>
+        <div class="note-actions">
+          ${actionButton}
+          <button class="note-delete" aria-label="Delete note">×</button>
+        </div>
       </div>
     `;
 
     card.addEventListener('click', (event) => {
-      if (event.target.closest('.note-delete')) return;
+      if (event.target.closest('.note-delete') || event.target.closest('.note-archive') || event.target.closest('.note-unarchive')) return;
       openEditor(note.id);
     });
 
@@ -959,8 +985,58 @@ function renderNotes() {
       deleteNote(note.id);
     });
 
+    const archiveBtn = card.querySelector('.note-archive');
+    if (archiveBtn) archiveBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      archiveNote(note.id);
+    });
+
+    const unarchiveBtn = card.querySelector('.note-unarchive');
+    if (unarchiveBtn) unarchiveBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      unarchiveNote(note.id);
+    });
+
     notesGrid.appendChild(card);
   });
+}
+
+function archiveNote(id) {
+  notes = notes.map(n => n.id === id ? { ...n, archived: true } : n);
+  saveNotes();
+  renderNotes();
+}
+
+function unarchiveNote(id) {
+  notes = notes.map(n => n.id === id ? { ...n, archived: false } : n);
+  saveNotes();
+  renderNotes();
+}
+
+function formatReminderLabel(isoString) {
+  const d = new Date(isoString);
+  if (isNaN(d)) return '';
+  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function scheduleReminders() {
+  notes.forEach(note => {
+    if (!note.reminder || note.archived) return;
+    const ms = new Date(note.reminder).getTime() - Date.now();
+    if (ms <= 0 || ms > 7 * 24 * 60 * 60 * 1000) return; // only schedule within 7 days
+    setTimeout(() => {
+      showDesktopNotification(`Reminder: ${note.title || 'Note'}`, note.body?.slice(0, 80) || '');
+    }, ms);
+  });
+}
+
+function switchNotesView(v) {
+  notesView = v;
+  [navNotes, navReminders, navArchive].forEach(btn => btn.classList.remove('active'));
+  if (v === 'notes') navNotes.classList.add('active');
+  if (v === 'reminders') navReminders.classList.add('active');
+  if (v === 'archive') navArchive.classList.add('active');
+  renderNotes();
 }
 
 function renderChatMessages() {
@@ -1323,6 +1399,7 @@ function openEditor(noteId = null) {
   noteTitle.value = note?.title || '';
   noteBody.value = note?.body || '';
   noteTag.value = note?.tag || 'Personal';
+  noteReminder.value = note?.reminder ? note.reminder.slice(0, 16) : '';
   noteModalOverlay.classList.remove('hidden');
   noteTitle.focus();
 }
@@ -1501,12 +1578,13 @@ noteForm.addEventListener('submit', (event) => {
   const title = noteTitle.value.trim();
   const body = noteBody.value.trim();
   const tag = noteTag.value;
+  const reminder = noteReminder.value ? new Date(noteReminder.value).toISOString() : null;
   if (!title && !body) return;
 
   if (editingNoteId) {
     notes = notes.map((note) =>
       note.id === editingNoteId
-        ? { ...note, title, body, tag, color: assignColorForTag(tag), updatedAt: Date.now() }
+        ? { ...note, title, body, tag, color: assignColorForTag(tag), reminder, updatedAt: Date.now() }
         : note
     );
   } else {
@@ -1516,11 +1594,13 @@ noteForm.addEventListener('submit', (event) => {
       body,
       tag,
       color: assignColorForTag(tag),
+      reminder,
       updatedAt: Date.now(),
     });
   }
 
   saveNotes();
+  scheduleReminders();
   renderNotes();
   closeEditor();
 });
@@ -1648,6 +1728,11 @@ window.addEventListener('devicemotion', (event) => {
 
 // Service worker registration removed to prevent stale cached app shell on GitHub Pages.
 
+navNotes.addEventListener('click', () => switchNotesView('notes'));
+navReminders.addEventListener('click', () => switchNotesView('reminders'));
+navArchive.addEventListener('click', () => switchNotesView('archive'));
+
 loadNotes();
 renderNotes();
+scheduleReminders();
 ensureNoOldServiceWorker().then(() => initializeSupabase());

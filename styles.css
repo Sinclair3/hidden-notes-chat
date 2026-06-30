@@ -788,6 +788,46 @@ button {
   font-size: 18px;
 }
 
+.reminder-badge {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #7a6000;
+  background: #fff8dc;
+  border: 1px solid #f5c63b;
+  border-radius: 99px;
+  padding: 2px 8px;
+}
+
+.note-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note-archive, .note-unarchive {
+  background: none;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+  opacity: 0.55;
+  padding: 2px;
+}
+
+.note-archive:hover, .note-unarchive:hover {
+  opacity: 1;
+}
+
+#noteReminder {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e5e5ea;
+  border-radius: 10px;
+  font-size: 15px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
