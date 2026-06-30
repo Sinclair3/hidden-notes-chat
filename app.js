@@ -123,7 +123,6 @@ const readers = {}; // messageId -> Set of reader deviceIds
 const reactionsPicker = ['👍','❤️','😂','😮','😢','👎'];
 let encryptionEnabled = false;
 let sessionPassphrase = null;
-let decoyPinHash = localStorage.getItem('decoy-pin-hash') || null;
 let myName = localStorage.getItem(USER_NAME_KEY) || null;
 let knownNames = {};
 try { knownNames = JSON.parse(localStorage.getItem(KNOWN_NAMES_KEY) || '{}'); } catch (e) { knownNames = {}; }
@@ -1447,47 +1446,7 @@ function showPinDialog(message, { inputType = 'password', placeholder = 'PIN (le
 }
 
 async function handleSecretOpen() {
-  if (!decoyPinHash) {
-    const pin = await showPinDialog('Set a decoy PIN (leave blank to skip):');
-    if (!pin) {
-      setView('chat');
-      return;
-    }
-    const h = await sha256Hex(pin);
-    localStorage.setItem('decoy-pin-hash', h);
-    decoyPinHash = h;
-    setView('chat');
-    return;
-  }
-  const entry = await showPinDialog('Enter PIN to open hidden chat:');
-  if (!entry) {
-    // cancelled → decoy
-    const decoy = localStorage.getItem('decoy-notes');
-    if (decoy) {
-      try { notes = JSON.parse(decoy); } catch (e) { notes = defaultNotes.slice(); }
-    } else {
-      notes = defaultNotes.slice();
-    }
-    saveNotes();
-    renderNotes();
-    setView('notes');
-    return;
-  }
-  const h2 = await sha256Hex(entry);
-  if (h2 === decoyPinHash) {
-    setView('chat');
-  } else {
-    // wrong PIN → decoy
-    const decoy = localStorage.getItem('decoy-notes');
-    if (decoy) {
-      try { notes = JSON.parse(decoy); } catch (e) { notes = defaultNotes.slice(); }
-    } else {
-      notes = defaultNotes.slice();
-    }
-    saveNotes();
-    renderNotes();
-    setView('notes');
-  }
+  setView('chat');
 }
 
 
@@ -1522,13 +1481,6 @@ searchInput.addEventListener('keydown', async (event) => {
   }
 });
 
-async function sha256Hex(str) {
-  const enc = new TextEncoder();
-  const data = enc.encode(str);
-  const hashBuf = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuf));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
 
 
 filterChips.addEventListener('click', (event) => {
