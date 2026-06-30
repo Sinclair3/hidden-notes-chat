@@ -1138,6 +1138,22 @@ function renderChatMessages() {
 
     bubble.appendChild(actions);
 
+    // Long press to show/hide action bar
+    let pressTimer = null;
+    bubble.addEventListener('touchstart', (e) => {
+      pressTimer = setTimeout(() => {
+        document.querySelectorAll('.bubble.show-actions').forEach(b => b !== bubble && b.classList.remove('show-actions'));
+        bubble.classList.toggle('show-actions');
+      }, 450);
+    }, { passive: true });
+    bubble.addEventListener('touchend', () => clearTimeout(pressTimer));
+    bubble.addEventListener('touchmove', () => clearTimeout(pressTimer));
+    bubble.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('.bubble.show-actions').forEach(b => b !== bubble && b.classList.remove('show-actions'));
+      bubble.classList.toggle('show-actions');
+    });
+
     if (message.reaction) {
       const reaction = document.createElement('span');
       reaction.className = 'reaction';
@@ -1652,6 +1668,12 @@ composerInput.addEventListener('input', () => {
     typingSent = false;
   }, 1500);
 });
+
+document.addEventListener('touchstart', (e) => {
+  if (!e.target.closest('.bubble')) {
+    document.querySelectorAll('.bubble.show-actions').forEach(b => b.classList.remove('show-actions'));
+  }
+}, { passive: true });
 
 attachButton.addEventListener('click', () => attachmentInput.click());
 attachmentInput.addEventListener('change', handleFileSelection);
