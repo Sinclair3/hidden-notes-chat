@@ -26,3 +26,21 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cachedResponse) => cachedResponse || fetch(event.request))
   );
 });
+
+self.addEventListener('push', (event) => {
+  let data = { title: 'Notes', body: 'Note updated', icon: '/icons/notes-icon-192.png' };
+  try { data = { ...data, ...event.data.json() }; } catch {}
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: data.icon,
+      silent: false,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow('/'));
+});

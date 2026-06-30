@@ -1,6 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, ROOM_KEY } from './supabase.js';
 
+const VAPID_PUBLIC_KEY = 'BB4R8iAOq8X6WsrDYwrLT4FFY79bol2mIzrRC_BrNZyY_AlrEgTVqkUqks1VEPz_UylPFyfM2k8mkDzdAunWqOA';
 const LOCAL_STORAGE_KEY = 'hidden-notes-notes';
 const DEVICE_ID_KEY = 'hidden-notes-device-id';
 const USER_NAME_KEY = 'chat-user-name';
@@ -206,6 +207,7 @@ async function initializeSupabase() {
   requestNotificationPermission();
   await fetchChatHistory();
   await subscribeToChat();
+  subscribeToPush();
 }
 
 async function ensureNoOldServiceWorker() {
@@ -532,6 +534,7 @@ async function addChatMessage(text) {
     console.error('Supabase insert error', error);
   } else {
     console.log('Supabase insert succeeded', insertData);
+    triggerPushNotification();
     try {
       const inserted = Array.isArray(insertData) ? insertData[0] : insertData;
       if (inserted) {
@@ -788,6 +791,47 @@ async function fetchChatHistory() {
 function requestNotificationPermission() {
   if (!('Notification' in window)) return;
   if (Notification.permission === 'default') Notification.requestPermission().then((p) => console.log('Notification permission', p));
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return new Uint8Array([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !supabase) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    // Save subscription to Supabase
+    await supabase.from('push_subscriptions').upsert({
+      device_id: deviceId,
+      subscription: sub.toJSON(),
+      room: ROOM_KEY,
+    }, { onConflict: 'device_id' });
+  } catch (e) {
+    console.warn('Push subscription failed', e);
+  }
+}
+
+async function triggerPushNotification() {
+  try {
+    await fetch('/.netlify/functions/send-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senderDeviceId: deviceId }),
+    });
+  } catch (e) {
+    console.warn('Push trigger failed', e);
+  }
 }
 
 function showDesktopNotification(title, body, icon) {
