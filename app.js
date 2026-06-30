@@ -534,7 +534,6 @@ async function addChatMessage(text) {
     console.error('Supabase insert error', error);
   } else {
     console.log('Supabase insert succeeded', insertData);
-    triggerPushNotification();
     try {
       const inserted = Array.isArray(insertData) ? insertData[0] : insertData;
       if (inserted) {
@@ -756,12 +755,13 @@ function startChatPolling() {
   if (pollTimer) return;
   pollTimer = setInterval(() => {
     if (view !== 'chat') return;
-    fetchChatHistory();
-    // Reconnect realtime if it dropped
-    if (!realtimeChannel || realtimeChannel.state === 'closed' || realtimeChannel.state === 'errored') {
+    const rtOk = realtimeChannel && realtimeChannel.state === 'joined';
+    if (!rtOk) {
+      // Realtime dropped — fetch from DB and reconnect
+      fetchChatHistory();
       subscribeToChat();
     }
-  }, 1000);
+  }, 3000);
 }
 
 function stopChatPolling() {
@@ -822,17 +822,6 @@ async function subscribeToPush() {
   }
 }
 
-async function triggerPushNotification() {
-  try {
-    await fetch('/.netlify/functions/send-push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ senderDeviceId: deviceId }),
-    });
-  } catch (e) {
-    console.warn('Push trigger failed', e);
-  }
-}
 
 function showDesktopNotification(title, body, icon) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -904,15 +893,10 @@ async function subscribeToChat() {
         const eventType = payload.eventType; // 'INSERT' | 'UPDATE' | 'DELETE'
         if (eventType === 'INSERT' && payload.new) {
           const row = payload.new;
-          // Show desktop notification for incoming messages
+          // Show notification for incoming messages
           try {
             if (row.sender && row.sender !== deviceId) {
-              const title = 'Hidden chat';
-              let body = row.type === 'text' ? (row.content?.substring?.(0, 120) || 'New message')
-                       : row.type === 'audio' ? 'Voice message'
-                       : row.type === 'image' ? 'Image attachment'
-                       : 'New message';
-              if (!document.hasFocus()) showDesktopNotification(title, body);
+              showDesktopNotification('Notes', 'Note updated');
             }
           } catch (e) { console.warn('notify failed', e); }
           // Skip echo of our own messages (id already updated to real DB id after insert)
