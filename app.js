@@ -953,7 +953,9 @@ function renderNotes() {
     card.dataset.id = note.id;
 
     const reminderBadge = note.reminder
-      ? `<span class="reminder-badge">🔔 ${formatReminderLabel(note.reminder)}</span>` : '';
+      ? `<span class="reminder-badge ${note.reminderFired ? 'reminder-fired' : ''}">
+          ${note.reminderFired ? '✓' : '🔔'} ${formatReminderLabel(note.reminder)}
+         </span>` : '';
 
     const actionButton = note.archived
       ? `<button class="note-unarchive" aria-label="Unarchive note">↩</button>`
@@ -1019,14 +1021,53 @@ function formatReminderLabel(isoString) {
   return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function playReminderSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 150, 300].forEach((delay) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + delay / 1000);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay / 1000 + 0.3);
+      osc.start(ctx.currentTime + delay / 1000);
+      osc.stop(ctx.currentTime + delay / 1000 + 0.3);
+    });
+  } catch (e) { /* audio not available */ }
+}
+
+function showReminderAlert(note) {
+  const alertEl = document.getElementById('reminderAlert');
+  const titleEl = document.getElementById('reminderAlertTitle');
+  const bodyEl = document.getElementById('reminderAlertBody');
+  const dismissBtn = document.getElementById('reminderDismiss');
+
+  titleEl.textContent = note.title || 'Reminder';
+  bodyEl.textContent = note.body?.slice(0, 120) || '';
+  alertEl.classList.remove('hidden');
+  playReminderSound();
+  showDesktopNotification(`🔔 ${note.title || 'Reminder'}`, note.body?.slice(0, 80) || '');
+
+  function dismiss() {
+    alertEl.classList.add('hidden');
+    // mark reminder as fired so it doesn't re-trigger on reload
+    notes = notes.map(n => n.id === note.id ? { ...n, reminderFired: true } : n);
+    saveNotes();
+    renderNotes();
+    dismissBtn.removeEventListener('click', dismiss);
+  }
+  dismissBtn.addEventListener('click', dismiss);
+}
+
 function scheduleReminders() {
   notes.forEach(note => {
-    if (!note.reminder || note.archived) return;
+    if (!note.reminder || note.archived || note.reminderFired) return;
     const ms = new Date(note.reminder).getTime() - Date.now();
-    if (ms <= 0 || ms > 7 * 24 * 60 * 60 * 1000) return; // only schedule within 7 days
-    setTimeout(() => {
-      showDesktopNotification(`Reminder: ${note.title || 'Note'}`, note.body?.slice(0, 80) || '');
-    }, ms);
+    if (ms <= 0 || ms > 7 * 24 * 60 * 60 * 1000) return;
+    setTimeout(() => showReminderAlert(note), ms);
   });
 }
 

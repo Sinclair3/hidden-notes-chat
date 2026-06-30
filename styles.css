@@ -788,6 +788,54 @@ button {
   font-size: 18px;
 }
 
+.reminder-alert {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 24px;
+}
+
+.reminder-alert.hidden { display: none; }
+
+.reminder-alert-inner {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 32px 24px 24px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+  animation: reminder-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes reminder-pop {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.reminder-alert-icon {
+  font-size: 44px;
+  margin-bottom: 12px;
+}
+
+.reminder-alert-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin-bottom: 8px;
+}
+
+.reminder-alert-body {
+  font-size: 14px;
+  color: #6b6b70;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
 .reminder-badge {
   display: inline-block;
   margin-top: 6px;
@@ -797,6 +845,12 @@ button {
   border: 1px solid #f5c63b;
   border-radius: 99px;
   padding: 2px 8px;
+}
+
+.reminder-badge.reminder-fired {
+  color: #888;
+  background: #f5f5f5;
+  border-color: #ddd;
 }
 
 .note-actions {
